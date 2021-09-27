@@ -1,0 +1,272 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;600&family=Shadows+Into+Light&display=swap');
+/**************/
+/*** LAYOUT ***/
+/**************/
+
+body{
+    font-family: 'Poppins';
+    margin: 0; 
+}
+
+.vis-container{
+    display: grid;
+    background-image: linear-gradient( rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5) ),  url('../img/milky-way-bg.png');
+    background-size: cover;
+}
+.centered-svg{
+    max-width: 100vh;
+    max-height: 100vw;
+    overflow: visible;
+    margin: 0 auto;
+}
+.title{
+    font-size: 5vw;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+/* SVG VISUALISATION */
+.project-value-bg,
+.node-bg,
+.node-outline{
+    pointer-events: none;
+}
+
+/**********************************/
+/* LIGHT MODE (BASE) STYLING   */
+/**********************************/
+
+.bg-layer,
+.node-bg,
+.project-node{
+    fill: #F0EAD6;
+    stroke: none;
+}
+.ls-node-group{
+    cursor: pointer;
+}
+.ls-node{
+    fill: #dc143c;
+    /* animation: pulseHeart 1.5s infinite; */
+}
+
+.project-node-outline, 
+.project-link{
+    stroke: #333333;
+    stroke-linejoin: round;
+    fill: none;
+}
+.project-node{
+    cursor: pointer;
+    mix-blend-mode: hue;
+}
+
+.year-node-group{
+    pointer-events: none;
+    fill: none;
+}
+.gridline{
+    fill: none;
+    stroke: #333333;
+    stroke-width: 0.25px;
+    stroke-opacity: 0.5;
+}
+
+.project-link.direct{
+    stroke-dasharray: 1px 1px;
+}
+.project-link.network{
+    stroke-dasharray: 3px 3px;
+    stroke-opacity: 0.5;
+}
+.ls-node-label{
+    font-family: 'Shadows Into Light';
+    text-anchor: middle;
+    font-size: 40px;
+    font-weight: 600;
+    fill: #fff;
+    /* animation: pulseLogoText 1.5s infinite; */
+}
+.year-node-label,
+.orgType-node-label{
+    fill:  #333333;
+    text-anchor: middle;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+
+/* Colour palettes */
+.public-sector{
+    fill: greenyellow;
+}
+.private-sector{
+    fill: magenta;
+}
+.non-government-organisation{
+    fill: aqua;
+}
+.not-for-profit{
+    fill: orange;
+}
+
+/***********************/
+/* DARK MODE STYLING   */
+/***********************/
+
+.dark .bg-layer{
+    fill: rgb(39, 34, 44);
+}
+.dark.glow .ls-node{
+    animation: pulseHeartSmall 1.5s infinite;
+}
+.dark.glow .ls-node-label{
+    animation: pulseLogoTextSmall 1.5s infinite;
+}
+.dark .project-link:not(.root),
+.dark .gridline{
+    stroke: #fff;   
+    opacity: 1;
+}
+.dark .year-node-label,
+.dark .orgType-node-label{
+    fill:  #fff;
+}
+.dark .project-node{
+    cursor: pointer;
+    mix-blend-mode: luminosity;
+}
+.dark .project-node.no-mix-blend{
+    mix-blend-mode: unset;
+}
+.dark .project-value-bg{
+    fill:  #fff;
+    opacity: 0.4;
+    mix-blend-mode: soft-light;
+}
+/* .dark.glow .project-node, */
+/* .dark.glow .ls-node{ */
+.dark .ls-node{
+    filter: url(#softGlow);
+}
+
+.dark .project-node-outline{
+    stroke: #fff;
+}
+
+.dark .public-sector{
+    fill:        rgb(248, 238, 182);
+    background  :rgb(248, 238, 182);
+}
+.dark .private-sector{
+    fill:       rgb(255, 134, 161);   
+    background:  rgb(255, 134, 161);   
+}
+.dark .non-government-organisation{
+    fill:       rgb(58, 252, 145);
+    background: rgb(58, 252, 145);
+}
+.dark .not-for-profit{
+    fill:       rgb(63, 223, 252);
+    background: rgb(63, 223, 252);
+}
+
+
+/*********************************/
+/*  SKETCH MODE FILTER CLASSES   */
+/*******************************/
+
+.sketch .bg-layer{
+    filter: url(#roughPaper);
+}
+.sketch .project-link,
+.sketch .project-node-outline{
+    filter: url(#pencilTexture4);
+    /* fill: transparent; */
+}
+
+
+/***********************/
+/* TOOLTIP STYLING  */
+/***********************/
+
+.tooltip{
+    opacity: 0;
+    position: absolute; 
+    top: 0;
+    left: 0;
+    width: 20em;
+    padding: 0.75em 1em; 
+    background: rgba(255, 255, 255, 0.7); 
+    font-size: 0.65rem; 
+    /* border: 1px solid #ddd;  */
+    border-radius: 1rem;
+    z-index: 10; 
+    pointer-events: none;
+}
+.tooltip.public-sector{
+    box-shadow:
+        inset 0 0 90px #fff,      /* inner white */
+        inset 10px 0 20px #f0f,   /* inner left magenta short */
+        inset -10px 0 50px #0ff,  /* inner right cyan short */
+        inset 10px 0 75px #f0f,  /* inner left magenta broad */
+        inset -10px 0 75px #0ff, /* inner right cyan broad */
+        0 0 25px #fff,            /* outer white */
+        -5px 0 20px #f0f,        /* outer left magenta */
+        5px 0 20px #0ff;         /* outer right cyan */
+}
+
+.tooltip-header{
+    text-align: center;
+    font-weight: 600;
+    line-height: 1.25; 
+}
+.tooltip-content{
+    font-size: 0.5rem; 
+    line-height: 1.25;
+}
+.tooltip-client{
+    text-align: center;
+    font-style: italic;
+    font-weight: 300;
+    padding-top: 0.25em;
+    padding-bottom: 0.75em;
+}
+
+
+/***********************/
+/* CSS ANIMATIONS  */
+/***********************/
+
+.pulse{
+    animation: pulse 1.5s infinite;
+}
+
+
+@keyframes pulseHeart {
+	0%      { transform: scale(5);    }
+	65%     { transform: scale(5.5);   }
+	100%    { transform: scale(5);    }
+}
+@keyframes pulseLogoText {
+	0%      { transform: scale(1);    }
+	65%     { transform: scale(1.0625);   }
+	100%    { transform: scale(1);    }
+}
+@keyframes pulseHeartSmall {
+	0%      { transform: scale(3);    }
+	65%     { transform: scale(3.25);   }
+	100%    { transform: scale(3);    }
+}
+@keyframes pulseLogoTextSmall {
+	0%      { transform: scale(0.65);    }
+	65%     { transform: scale(0.725);   }
+	100%    { transform: scale(0.65);    }
+}
+
+@keyframes pulse {
+	0%      { transform: scale(1);    }
+	70%     { transform: scale(1.25);   }
+	100%    { transform: scale(1);    }
+}
