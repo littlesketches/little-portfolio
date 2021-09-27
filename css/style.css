@@ -66,6 +66,11 @@ body{
     pointer-events: none;
     fill: none;
 }
+.cluster-outline{
+    stroke: #fff;
+    stroke-width: 1px;
+    fill: none;
+}
 .gridline{
     fill: none;
     stroke: #333333;
@@ -89,13 +94,16 @@ body{
     /* animation: pulseLogoText 1.5s infinite; */
 }
 .year-node-label,
+.cluster-node-label,
 .orgType-node-label{
     fill:  #333333;
     text-anchor: middle;
     font-size: 14px;
     font-weight: 600;
 }
-
+.cluster-node-label{
+    font-size: 30px;
+}
 
 /* Colour palettes */
 .public-sector{
@@ -129,7 +137,12 @@ body{
     stroke: #fff;   
     opacity: 1;
 }
+
+.dark .cluster-outline{
+    stroke-width: 0;
+}
 .dark .year-node-label,
+.dark .cluster-node-label,
 .dark .orgType-node-label{
     fill:  #fff;
 }

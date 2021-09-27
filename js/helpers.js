@@ -5,7 +5,7 @@
 
 
 function applyPencilFilterTextures(svg) {
-    const defs = svg.append("defs");
+    const defs = svg.select("defs");
 
     var filter = defs.append("filter")
         .attr("id","glow");

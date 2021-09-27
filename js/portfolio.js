@@ -72,19 +72,23 @@
         state: {
             mode:               'dark',
             visibility: {
-                links:          '',
-                yearLabels:     '',
-                clusterLabels:  '',
+                links:                  '',
+                yearLabels:             '',
+                clusterLabels:          '',
+                centralClusterLabel:    '',
                 // Filter effects
-                sketch:         false,
-                glow:           true,
+                sketch:                 false,
+                glow:               true,
 
             },   
             layout: {
                 nodeScale:      1,
                 lsNodeScale:    1,
+                lsNodeScale:    1,
                 ratingName:     'fame',
                 clusterType:    'orgType',
+                clusterGroup:   'tech',
+                clusterFocus:   'd3.js',
             },
             sim: {
                 name:          'timelineX',  //clusterHuddle,  circle, timelineX, timelineXY, timelineSpiral, constellationRadial, constellationHorizon
@@ -138,6 +142,7 @@
                     d3.selectAll('.project-link').transition().duration(500).style('opacity', vis.state.visibility.links ? null : 0)
                     d3.selectAll('.year-node-label').transition().duration(500).style('opacity', vis.state.visibility.yearLabels ? null : 0)
                     d3.selectAll('.orgType-node-label').transition().duration(500).style('opacity', vis.state.visibility.clusterLabels ? null : 0)
+                    d3.selectAll('.cluster-node-label').transition().duration(500).style('opacity', vis.state.visibility.centralClusterLabel ? null : 0)
 
                     vis.methods.layout.nodeResize()
 
@@ -158,7 +163,7 @@
                 }
             },
             layout: {
-                nodeResize: (nodeScale = vis.state.layout.nodeScale) => {
+                nodeResize: (nodeScale = vis.state.layout.nodeScale, lsNodeScale = vis.state.layout.lsNodeScale) => {
                     // a. Update scale and all project nodes
                     vis.scales.valueRadius.range([settings.geometry.node.min * nodeScale, settings.geometry.node.max * nodeScale])
 
@@ -170,6 +175,11 @@
 
                     d3.selectAll('.node-bg.pro-bono, .node-bg.lab, .project-node.pro-bono, .project-node.lab, .project-node-outline.pro-bono, .project-node-outline.lab').transition().duration(1000)
                         .attr("transform", d =>  `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)})`  )
+
+                    // b. Update scale of the LS node
+                    d3.select('.ls-node-icon-container').transition().duration(1000)
+                        .attr("transform", d =>  `scale(${lsNodeScale})`  )
+
                 }
             }
         } 
@@ -309,11 +319,12 @@ async function transformData(){
             rtg_fun:            !isNaN(projObj.rtg_fun)     ?  +projObj.rtg_fun : null,
             rtg_ave:            !isNaN(projObj.rtg_ave)     ?  +projObj.rtg_ave : null,
 
-            ctg_roles:          projObj.ctg_roles !== '' ? JSON.parse(projObj.ctg_roles) : null,
-            ctg_skills:         projObj.ctg_skills !== '' ? JSON.parse(projObj.ctg_skills) : null,
-            ctg_tech:           projObj.ctg_tech !== '' ? JSON.parse(projObj.ctg_tech) : null,
-            ctg_thinking:       projObj.ctg_thinking !== '' ? JSON.parse(projObj.ctg_thinking) : null,
-            ctg_themes:         projObj.ctg_themes !== '' ? JSON.parse(projObj.ctg_themes ) : null,
+            ctg_roles:          projObj.ctg_roles !== '' ? JSON.parse(projObj.ctg_roles) : [],
+            ctg_skills:         projObj.ctg_skills !== '' ? JSON.parse(projObj.ctg_skills) : [],
+            ctg_tech:           projObj.ctg_tech !== '' ? JSON.parse(projObj.ctg_tech) : [],
+            ctg_thinking:       projObj.ctg_thinking !== '' ? JSON.parse(projObj.ctg_thinking) : [],
+            ctg_themes:         projObj.ctg_themes !== '' ? JSON.parse(projObj.ctg_themes) : [],
+            ctg_domains:        projObj.ctg_domains !== '' ? JSON.parse(projObj.ctg_domains) : [],
 
             project_type:       projObj.ctg_type !== '' ? projObj.project_type : null,
             project_url:        projObj.project_URL !== '' ? projObj.project_URL : null,
@@ -353,14 +364,15 @@ async function transformData(){
         skills:         [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_skills).filter(d => d)) )].sort(),
         tech:           [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_tech).filter(d => d)) )].sort(),
         thinking:       [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_thinking).filter(d => d)) )].sort(),
-        type:           [... new Set( Object.values(data.schema.projects).map(d => d.project_type).filter(d => d)) ].sort()
+        domains:        [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_domains).filter(d => d)) )].sort(),
+        type:           [... new Set( Object.values(data.schema.projects).map(d => d.project_type).filter(d => d)) ].sort(),
     }
 
-    data.list.lead_partners = [...new Set(data.table.projects.map(d => d.Partners_Lead))].sort()
-    data.list.projectValues_LS = Object.values(data.schema.projects).map(d => d.value_LS)
-    data.list.projectValues_partners = Object.values(data.schema.projects).map(d => d3.sum(d.value_partners ))
-    data.list.projectValues_total = data.list.projectValues_LS.map( (d, i) => d + data.list.projectValues_partners[i]) 
-    data.list.orgType   = [...new Set(data.table.stakeholders.map(d => d.type)) ].sort()
+    data.list.lead_partners             = [...new Set(data.table.projects.map(d => d.partners_Lead))].sort()
+    data.list.projectValues_LS          = Object.values(data.schema.projects).map(d => d.value_LS)
+    data.list.projectValues_partners    = Object.values(data.schema.projects).map(d => d3.sum(d.value_partners ))
+    data.list.projectValues_total       = data.list.projectValues_LS.map( (d, i) => d + data.list.projectValues_partners[i]) 
+    data.list.orgType                   = [...new Set(data.table.stakeholders.map(d => d.type)) ].sort()
 
     // 4. Create wide date range
     const startYear     = d3.min(data.list.dates).getFullYear(),
@@ -392,15 +404,12 @@ async function transformData(){
                     type:      'orgType-node',                    
                 } 
             })
-            const inOutClusterNodes = [
-                { id:  `cluster_inner`,     name: 'inner-cluster',       type: 'inner-cluster-node' }, 
-                { id:  `cluster_outer`,     name: 'outer-cluster',       type: 'outer-cluster-node' } 
-            ]
+            const innerCluster = [ { id:  `cluster-inner`,     name: 'inner-cluster',       type: 'inner-cluster-node' }]
 
             data.chart.byProject.nodes =  yearNodes 
                 .concat(lsNode)
                 .concat(orgTypeNodes)
-                .concat(inOutClusterNodes)
+                .concat(innerCluster)
                 .concat(data.table.projects)
 
             // Link array 
@@ -492,9 +501,9 @@ async function renderVis(data, settings){
         min:            settings.dims.width / 1080 , 
         max:            settings.dims.width / 1080 * 50, 
         centre:         settings.dims.width / 1080 * 100,
-        cluster:        settings.dims.width / 1080 * 60
+        cluster:        settings.dims.width / 1080 * 60,
+        centralCluster:  settings.dims.width / 1080 * 130
     }
-
 
     // Set clusters 
     setClusterPositions()
@@ -570,8 +579,10 @@ async function renderVis(data, settings){
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = false
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = false
             vis.state.layout.nodeScale = 1
+            vis.state.layout.lsNodeScale = 1
             vis.methods.layout.nodeResize()
 
             // 1 .Set new simulation forces
@@ -581,15 +592,15 @@ async function renderVis(data, settings){
                 .force("collision", d3.forceCollide()
                     .radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
                         :  d.__proto__.type ?  0
-                            : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS)  * 1.05
+                            : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS)  + (settings.dims.width / 1080 * 2.5)
                     )
                 )
                 .force("x", d3.forceX().x(centreline.x)
-                    .strength( d => d.__proto__.type ? 1 : 0.15)
+                    .strength( d => d.__proto__.type ? 1 : 0.1)
                 )
                 .force("y", d3.forceY()
                     .y(d => d.__proto__.type === 'ls-node' ?  oneQuarter.y 
-                        : d.__proto__.type === 'year-node'  || d.__proto__.type === 'prgType-node'? -oneThird.y : centreline.y
+                        : d.__proto__.type === 'year-node'  || d.__proto__.type === 'orgType-node'? -oneThird.y : centreline.y
                     )
                     .strength( d => d.__proto__.type ? 1 : 1)
                 )
@@ -609,8 +620,10 @@ async function renderVis(data, settings){
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = false
             vis.state.visibility.clusterLabels = true
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = false
             vis.state.layout.nodeScale = 0.7
+            vis.state.layout.lsNodeScale = 0.7
             vis.methods.layout.nodeResize()
 
             // 1. Set Cluster positions
@@ -651,6 +664,12 @@ async function renderVis(data, settings){
                     .strength( d => d.__proto__.type ? 1 : 0.1)
                 )
                 .force("radial", null)
+                .force("radial", d3.forceRadial()
+                    .radius(d =>  d.__proto__.type ? 0 : settings.dims.width * 0.375 )
+                    .x(centreline.x)
+                    .y(centreline.y)
+                    .strength(0.005)
+                )
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(null) )
 
             // 2. Fixed node settings for non-project nodes (year labels and central node)
@@ -669,51 +688,92 @@ async function renderVis(data, settings){
             })
         },
 
-        clusterFocus: () => { 
+        clusterFocus: (group = vis.state.layout.clusterGroup, clusterName = vis.state.layout.clusterFocus ) => { 
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = false
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = true
             vis.state.visibility.links = false
             vis.state.layout.nodeScale = 1
+            vis.state.layout.lsNodeScale = 0.33
             vis.methods.layout.nodeResize()
 
-            // 1 .Set new simulation forces
+            // 1. Set up the cluster node
+            let searchKey
+            switch(group){
+                case 'tech':
+                    searchKey = 'ctg_tech' ; break   
+                case 'skills':
+                    searchKey = 'ctg_skills' ; break   
+                case 'roles':
+                    searchKey = 'ctg_roles' ; break   
+                case 'themes':
+                    searchKey = 'ctg_themes' ; break  
+                case 'thinking':
+                    searchKey = 'ctg_thinking' ; break  
+                case 'domains':
+                    searchKey = 'ctg_domains' ; break  
+                default:
+            }
+
+            d3.select('.cluster-node-label').text(clusterName)
+                .call(helpers.wrap, settings.geometry.node.centralCluster, 1.1)
+                .style('opacity', 0)
+                .transition().duration(250)
+                .style('opacity', null)
+
+            // 2.Set new simulation forces
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
-                .force("charge", d3.forceManyBody().strength(d => d.__proto__.type  ? 0 : 0.1))
+                .force("charge", d3.forceManyBody().strength(d => d.__proto__.type  ? 0 : -500))
                 .force("centre", d3.forceCenter(centreline.x, centreline.y).strength(0.1) )
                 .force("collision", d3.forceCollide()
-                    .radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                    .radius( d => d.__proto__.type === 'cluster-inner' ?  settings.geometry.node.centralCluster
                         :  d.__proto__.type ?  0
-                            : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS)  * 1.05
+                            : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + settings.dims.width / 1080 * 5
                     )
                 )
-                .force("x", d3.forceX().x(centreline.x)
-                    .strength( d => d.__proto__.type ? 1 : 0.15)
+                .force("x", d3.forceX()
+                    .x( d =>  d.__proto__.type === 'ls-node' ? centreline.x : null )
+                    .strength(d =>  d.__proto__.type === 'ls-node' ? 1: null)
                 )
                 .force("y", d3.forceY()
-                    .y(d => d.__proto__.type === 'ls-node' ?  oneQuarter.y 
-                        : d.__proto__.type === 'year-node'  || d.__proto__.type === 'prgType-node'? -oneThird.y : centreline.y
-                    )
-                    .strength( d => d.__proto__.type ? 1 : 1)
+                    .y( d => d.__proto__.type === 'ls-node' ? centreline.y - 150 : null)
+                    .strength(d => d.__proto__.type === 'ls-node' ? 1: null)
                 )
-                .force("radial", null)
+                .force("radial", d3.forceRadial()
+                    .radius(d =>  d.__proto__.type ? 0 : 
+                        (data.schema.projects[d.__proto__.id][searchKey].indexOf(clusterName) > -1) ? settings.geometry.node.centralCluster 
+                        : settings.dims.width * 0.4 
+                    )
+                    .x(centreline.x)
+                    .y(centreline.y)
+                    .strength(1)
+                )
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(null) )
+                .velocityDecay(0.8)
 
-            // 2. Fixed node settings for non-project nodes (year labels and central node)
+            // 4. Fixed node settings for non-project nodes (year labels and central node)
             data.list.years.forEach( (year, i) => {
                 vis.data.nodes[i].fx = centreline.x
-                vis.data.nodes[i].fy = oneQuarter.y
+                vis.data.nodes[i].fy = centreline.y
             })
             vis.data.nodes[data.list.years.length].fx = null
             vis.data.nodes[data.list.years.length].fy = null
+
+            const noNonProjectNodes = data.list.years.length + 1 +  data.list.orgType.length
+            vis.data.nodes[noNonProjectNodes].fx = centreline.x
+            vis.data.nodes[noNonProjectNodes].fy = centreline.y
+
         },
 
         circle: () => {
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = false
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = false
             vis.state.layout.nodeScale = 1
+            vis.state.layout.lsNodeScale = 1.25
             vis.methods.layout.nodeResize()
 
             // 1. Set new simulation forces for circular layout
@@ -722,10 +782,8 @@ async function renderVis(data, settings){
                 .force("centre", null )
                 .force("collision", d3.forceCollide()
                     .radius( d =>   d.__proto__.type === 'ls-node' ? settings.geometry.node.centre  :  d.__proto__.type ? 0
-                        : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + (settings.dims.width / 1080 * 1) )
+                        : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + (settings.dims.width / 1080 * 5) )
                 )
-                .force("x", d3.forceX().x(centreline.x).strength(d => d.__proto__.type ? 1 : 0))
-                .force("y", d3.forceY().y(centreline.y).strength(d => d.__proto__.type ? 1 : 0))
                 .force("radial", d3.forceRadial()
                     .radius(d =>  d.__proto__.type ? 0 : settings.dims.width * 0.25 )
                     .x(centreline.x)
@@ -747,8 +805,10 @@ async function renderVis(data, settings){
             // 0. Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = true
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = false
             vis.state.layout.nodeScale = 1
+            vis.state.layout.lsNodeScale = 1
             vis.methods.layout.nodeResize()
 
             // 1. Set new simulation forces for x-axis timeline layout
@@ -761,7 +821,7 @@ async function renderVis(data, settings){
                             : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + settings.dims.width / 1080 * 5 )
                 )
                 .force("x", d3.forceX().x( d => d.__proto__.type ? centreline.x:  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
-                    .strength(d => d.type ? 1: 0.3)
+                    .strength(d => d.type ? 1: 0.45)
                 )
                 .force("y", d3.forceY().y( d => d.__proto__.type ? oneQuarter.y  : twoThird.y)
                     .strength(d => d.type ? 1 : 0.15)
@@ -782,8 +842,10 @@ async function renderVis(data, settings){
             // 0. Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = true
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = false
             vis.state.layout.nodeScale = 1
+            vis.state.layout.lsNodeScale = 1
             vis.methods.layout.nodeResize()
 
             // 1. Set new simulation forces for diagonal 'xy-axis' timeline layout
@@ -809,7 +871,7 @@ async function renderVis(data, settings){
                         : d.__proto__.type ? oneQuarter.y  
                             : d3.mean( data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeY(d.date)) )
                     )
-                    .strength(d => d.__proto__.type === 'year-node' ? 0.25 : 0.25)
+                    .strength(d => d.__proto__.type === 'year-node' ? 0.25 : 0.2)
                 )
                 .force("radial", null)
                 .force("radial", null)
@@ -828,8 +890,10 @@ async function renderVis(data, settings){
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = true
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = true
             vis.state.layout.nodeScale = 0.5
+            vis.state.layout.lsNodeScale = 0.5
             vis.methods.layout.nodeResize()
 
             // 1. Set up spiral path  >> Adapted from > https://observablehq.com/@emepyc/spiral-subsections#points
@@ -925,8 +989,10 @@ async function renderVis(data, settings){
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = true
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = true
             vis.state.layout.nodeScale = 0.8
+            vis.state.layout.lsNodeScale = 0.5
             vis.methods.layout.nodeResize()
 
             // 1. Set new simulation forces for the radial constellation layout
@@ -970,8 +1036,10 @@ async function renderVis(data, settings){
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = true
             vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = true
             vis.state.layout.nodeScale = 0.8
+            vis.state.layout.lsNodeScale = 1
             vis.methods.layout.nodeResize()
 
             // 1. Set scales and value indicator
@@ -1044,12 +1112,12 @@ async function renderVis(data, settings){
             .attr('class', (d,i) => d.type ? `${d.type}-group` : `project-group ${d.__proto__.id}`)
 
         // i. Project and year nodes with shape options
-
             // I. Partners transparent 'shadow bg' (fee based projects only)
             vis.els.node.append('path')
                 .attr('class', d => typeof d.__proto__.type !== 'undefined' || data.schema.projects[d.__proto__.id].project_type  === 'pro bono' || data.schema.projects[d.__proto__.id].project_type  === "lab" ? 'dummy' : 'project-value-bg')
                 .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS + d3.sum(data.schema.projects[d.__proto__.id].value_partners)) )   
                 )
+
             // II. Node background (used to cover links where mix-blend mode is applied)
             vis.els.node.append('path')
                 .attr('class', d => typeof d.__proto__.type !== 'undefined'  ? 'dummy' : `node-bg ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
@@ -1101,18 +1169,18 @@ async function renderVis(data, settings){
             .classed('ls-node-icon-container', true)
             .on('mouseover', lsNodeMouseover)
             .on('mouseout', nodeMouseout)
-        lsNode.append('g')
-            .append('path').classed('ls-node', true)            
-            .attr('d', settings.geometry.icon.heart750)
 
+        lsNode.append('path').classed('ls-node', true).attr('d', settings.geometry.icon.heart750)
         lsNode.append('text').classed('ls-node-label', true).attr('y', -20).text('Little')
         lsNode.append('text').classed('ls-node-label', true).attr('y', 10).text('Sketches')
 
+        // iii. Add year node group
         d3.selectAll('.year-node-group')
             .append('text').classed('year-node-label', true)
             .attr('y', 5)
             .text(d => d.__proto__.name)
             
+        // iv. Add org type cluster nodes
         d3.selectAll('.orgType-node-group')
             .append('text').classed('orgType-node-label', true)
             .attr('y', 5).attr('dy', 0)
@@ -1120,6 +1188,18 @@ async function renderVis(data, settings){
             .text(d => d.__proto__.name)
             .call(helpers.wrap, settings.geometry.node.cluster, 1.2)
 
+        // v. Add inner cluster node
+        const innerClusterNode = d3.select('.inner-cluster-node-group')
+        innerClusterNode
+            .append('circle').classed('cluster-outline', true)
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r',  settings.geometry.node.centralCluster)
+
+        innerClusterNode.append('text')
+            .classed('cluster-node-label', true)
+            .attr('y', 5).attr('dy', 0)
+            .attr('x', 0)
 
     /////////////////////////////
     ////  START SIMULATION   ////
@@ -1200,8 +1280,6 @@ async function renderVis(data, settings){
                 .style('top', `${bbox.y - tooltip.node().offsetHeight - 5}px`)
         }
 
-        // console.log(x, y)
-
         // 2. Highlight the connected network
         d3.select(this).classed('no-mix-blend', true)       // Network node colours
 
@@ -1253,7 +1331,7 @@ async function renderVis(data, settings){
 
     // Key press views
     document.addEventListener("keypress",  async (event) =>{ 
-        console.log(event.keyCode)
+        // console.log(event.keyCode)
         switch(event.keyCode){
 
             case 48:  // 0
@@ -1276,8 +1354,20 @@ async function renderVis(data, settings){
                 break   
             case 54: // 6
                 vis.methods.ui.updateSimLayout('clusterMultiFoci')
-                break     
+                break   
             case 55: // 7
+                const index = data.list.project[vis.state.layout.clusterGroup].indexOf(vis.state.layout.clusterFocus)
+                vis.methods.ui.updateSimLayout('clusterFocus')
+                vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][(index +1) % data.list.project[vis.state.layout.clusterGroup].length]
+                break    
+            case 114: // r
+                const clusterTypes = ['tech', 'skills', 'roles', 'themes', 'thinking', 'domains'],
+                    clusterIDX = clusterTypes.indexOf(vis.state.layout.clusterGroup)
+                vis.state.layout.clusterGroup = clusterTypes[(clusterIDX + 1) % clusterTypes.length]
+                vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][0]
+                console.log('Cluster group is: '+vis.state.layout.clusterGroup)
+                break    
+            case 56: // 8
                 vis.state.layout.ratingName = 'average'
                 vis.methods.ui.updateSimLayout('constellationHorizon')
                 break  
@@ -1307,11 +1397,11 @@ async function renderVis(data, settings){
             orgType: {
                 0: { //'Community'
                     x:  centreline.x,
-                    y:  oneQuarter.y
+                    y:  oneQuarter.y / 2
                 },
                 1: { //'Education and research'
                     x:  centreline.x,
-                    y:  threeQuarter.y
+                    y:  threeQuarter.y + oneQuarter.y /2
                 },
                 2: { // 'Non-government organisation' 
                     x:  oneQuarter.x,
