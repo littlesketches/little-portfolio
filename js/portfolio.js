@@ -45,6 +45,14 @@
                 domain:     [1,         1000,     10000,    25000,      50000,              100000],
                 range:      ['free',    'tiny',   'little', 'mid-size', 'considerable',    'big']
             }
+        },
+        labels:{
+            map: {
+                ctg_domains:        "Domain knowledge",
+                ctg_tech:           "Tools and technologies",
+                ctg_skills:         "Capabilities",
+                ctg_themes:         "Little threads",
+            }
         }
     }
 
@@ -87,8 +95,8 @@
                 lsNodeScale:    1,
                 ratingName:     'fame',
                 clusterType:    'orgType',
-                clusterGroup:   'tech',
-                clusterFocus:   'd3.js',
+                clusterGroup:   'domains',
+                clusterFocus:   'Choose',
             },
             sim: {
                 name:          'timelineX',  //clusterHuddle,  circle, timelineX, timelineXY, timelineSpiral, constellationRadial, constellationHorizon
@@ -302,7 +310,7 @@ async function transformData(){
         if(projObj.link_direct      !== ""){ parentIds.push(projObj.link_direct) }
         if(projObj.link_indirect    !== ""){ parentIds.push(projObj.link_indirect) }
         if(projObj.link_network    !== ""){ parentIds.push(projObj.link_network) }
-
+// console.log(projObj)
         // c. Reshape projects data
         data.schema.projects[projObj.id] = {
             activeName:         projObj.active_name !== '' ? projObj.active_name : null,
@@ -359,13 +367,13 @@ async function transformData(){
     data.list.project_fame_rating    = [...new Set(data.table.projects.map(d => d.rtg_fame))]
 
     data.list.project = {
-        themes:         [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_themes).filter(d => d)) )].sort(),
-        roles:          [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_roles).filter(d => d)) )].sort(),
-        skills:         [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_skills).filter(d => d)) )].sort(),
-        tech:           [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_tech).filter(d => d)) )].sort(),
-        thinking:       [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_thinking).filter(d => d)) )].sort(),
-        domains:        [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_domains).filter(d => d)) )].sort(),
-        type:           [... new Set( Object.values(data.schema.projects).map(d => d.project_type).filter(d => d)) ].sort(),
+        themes:         [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_themes).filter(d => d)) )].sort( (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()) ),
+        roles:          [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_roles).filter(d => d)) )].sort( (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()) ),
+        skills:         [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_skills).filter(d => d)) )].sort( (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()) ),
+        tech:           [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_tech).filter(d => d)) )].sort( (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()) ),
+        thinking:       [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_thinking).filter(d => d)) )].sort( (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()) ),
+        domains:        [... new Set( d3.merge(Object.values(data.schema.projects).map(d => d.ctg_domains).filter(d => d)) )].sort( (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()) ),
+        type:           [... new Set( Object.values(data.schema.projects).map(d => d.project_type).filter(d => d)) ].sort( (a, b) => a.toLowerCase().localeCompare(b.toLowerCase()) )
     }
 
     data.list.lead_partners             = [...new Set(data.table.projects.map(d => d.partners_Lead))].sort()
@@ -717,7 +725,7 @@ async function renderVis(data, settings){
             }
 
             d3.select('.cluster-node-label').text(clusterName)
-                .call(helpers.wrap, settings.geometry.node.centralCluster, 1.1)
+                .call(helpers.wrap, settings.geometry.node.centralCluster * 1.5, 1.1)
                 .style('opacity', 0)
                 .transition().duration(250)
                 .style('opacity', null)
@@ -850,7 +858,7 @@ async function renderVis(data, settings){
 
             // 1. Set new simulation forces for diagonal 'xy-axis' timeline layout
             vis.state.simulation  = d3.forceSimulation(vis.data.nodes)
-                .force("charge", d3.forceManyBody().strength( d => d.__proto__.type ? 40 : 0) )
+                .force("charge", d3.forceManyBody().strength( d => d.__proto__.type ? 10 : 0) )
                 .force("centre", null )
                 .force("collision", d3.forceCollide()
                     .radius( d  => d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
@@ -876,6 +884,7 @@ async function renderVis(data, settings){
                 .force("radial", null)
                 .force("radial", null)
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(null) )
+                .velocityDecay(0.5 )
 
             // 2. Fixed node settings for non-project nodes (year labels and central node)
             data.list.years.forEach( (year, i) => {
@@ -975,6 +984,7 @@ async function renderVis(data, settings){
                 )
                 .force("radial", null)
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(null) )
+                .velocityDecay(0.7)
 
             // 3. Fixed node settings for non-project nodes (year labels and central node)
             spiralYears.forEach( (date, i) => {
@@ -1018,6 +1028,7 @@ async function renderVis(data, settings){
                     .id(d => d.id)
                     .strength(0.2)
                 )
+                .velocityDecay(0.7)
         
             // 2. Fixed node settings for non-project nodes (year labels and central node) and gridlines
             data.list.years.forEach( (year, i) => {
@@ -1356,14 +1367,16 @@ async function renderVis(data, settings){
                 vis.methods.ui.updateSimLayout('clusterMultiFoci')
                 break   
             case 55: // 7
+                // vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][0]
                 const index = data.list.project[vis.state.layout.clusterGroup].indexOf(vis.state.layout.clusterFocus)
+
                 vis.methods.ui.updateSimLayout('clusterFocus')
                 vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][(index +1) % data.list.project[vis.state.layout.clusterGroup].length]
                 break    
             case 114: // r
-                const clusterTypes = ['tech', 'skills', 'roles', 'themes', 'thinking', 'domains'],
-                    clusterIDX = clusterTypes.indexOf(vis.state.layout.clusterGroup)
-                vis.state.layout.clusterGroup = clusterTypes[(clusterIDX + 1) % clusterTypes.length]
+                const clusterGroups = ['tech', 'skills', 'roles', 'themes', 'thinking', 'domains'],
+                    clusterIDX = clusterGroups.indexOf(vis.state.layout.clusterGroup)
+                vis.state.layout.clusterGroup = clusterGroups[(clusterIDX + 1) % clusterGroups.length]
                 vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][0]
                 console.log('Cluster group is: '+vis.state.layout.clusterGroup)
                 break    

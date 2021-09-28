@@ -7,21 +7,26 @@
 body{
     font-family: 'Poppins';
     margin: 0; 
+    overflow:hidden;
 }
 
 .vis-container{
-    display: grid;
+    /* display: grid; */
     background-image: linear-gradient( rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5) ),  url('../img/milky-way-bg.png');
     background-size: cover;
+    height: 100vh;
+}
+.svg-container{
+    display: grid;
 }
 .centered-svg{
-    max-width: 100vh;
-    max-height: 100vw;
+    max-width: 90vh;
+    max-height: 90vw;
     overflow: visible;
     margin: 0 auto;
 }
 .title{
-    font-size: 5vw;
+    font-size: 5vh;
     text-align: center;
     text-transform: uppercase;
 }
@@ -102,7 +107,7 @@ body{
     font-weight: 600;
 }
 .cluster-node-label{
-    font-size: 30px;
+    font-size: 26px;
 }
 
 /* Colour palettes */
@@ -123,6 +128,9 @@ body{
 /* DARK MODE STYLING   */
 /***********************/
 
+.dark .title{
+    color: #fff;
+}
 .dark .bg-layer{
     fill: rgb(39, 34, 44);
 }
