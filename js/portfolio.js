@@ -1127,8 +1127,7 @@ async function renderVis(data, settings){
             // I. Partners transparent 'shadow bg' (fee based projects only)
             vis.els.node.append('path')
                 .attr('class', d => typeof d.__proto__.type !== 'undefined' || data.schema.projects[d.__proto__.id].project_type  === 'pro bono' || data.schema.projects[d.__proto__.id].project_type  === "lab" ? 'dummy' : 'project-value-bg')
-                .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS + d3.sum(data.schema.projects[d.__proto__.id].value_partners)) )   
-                )
+                .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS + d3.sum(data.schema.projects[d.__proto__.id].value_partners)) ) )
 
             // II. Node background (used to cover links where mix-blend mode is applied)
             if(settings.layout.nodeExtras){
@@ -1238,9 +1237,9 @@ async function renderVis(data, settings){
     function nodeMouseover(event, d){
         // 1. Tooltip
 
-        const bbox = this.getBoundingClientRect()
-            x = bbox.x, 
-            y = bbox.y
+        const nodeBbox = this.getBoundingClientRect()
+            x = nodeBbox.x, 
+            y = nodeBbox.y
         let projectID
 
         if(typeof d.__proto__.id !== 'undefined'){
@@ -1294,10 +1293,31 @@ async function renderVis(data, settings){
             document.getElementById('tooltip-header').innerHTML = projectData.name 
             document.getElementById('tooltip-description').innerHTML = `${projectShortDesc} ${dateString}${deliveryOrgString}`
 
+
+            // Test for edges and position node
+            const toolTipWidth    = tooltip.node().offsetWidth,
+                toolTipHeight   = tooltip.node().offsetHeight
+
+            let toolTipTop      = nodeBbox.y - toolTipHeight - 5,
+                toolTipLeft     = nodeBbox.x + nodeBbox.width * 0.5 - tooltip.node().offsetWidth * 0.5,
+                toolTipRight    = nodeBbox.x + nodeBbox.width * 0.5 + tooltip.node().offsetWidth * 0.5
+
+            if(nodeBbox.y - toolTipHeight < 0){
+                toolTipTop = nodeBbox.y + nodeBbox.height + 5
+            }
+            if(toolTipLeft < 0){ 
+                toolTipTop  = nodeBbox.y + nodeBbox.height * 0.5 - toolTipHeight * 0.5
+                toolTipLeft = nodeBbox.x + nodeBbox.width + 5
+            }
+            if(window.innerWidth - toolTipRight < 0){
+                toolTipTop  = nodeBbox.y + nodeBbox.height * 0.5 - toolTipHeight * 0.5
+                toolTipLeft = nodeBbox.x  - 5 - toolTipWidth 
+            }
+
             tooltip.classed(helpers.slugify(clientData.type), true)
                 .style('opacity' , 1)
-                .style('left', `${bbox.x + bbox.width * 0.5 - tooltip.node().offsetWidth * 0.5}px`)
-                .style('top', `${bbox.y - tooltip.node().offsetHeight - 5}px`)
+                .style('left', `${toolTipLeft}px`)
+                .style('top', `${toolTipTop}px`)
         }
 
         // 2. Highlight the connected network

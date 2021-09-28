@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Work portfolio">
+        <meta name="description" content="A little portfolio">
         <meta name="author" content="Little Sketches">
         <link rel="stylesheet" href="css/style.css">
         <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -12,20 +12,7 @@
     <body>
         <main class = "vis-container dark">
             <div  class = "svg-container">
-                <svg id = "portfolio-vis" class="centered-svg">
-                    <defs>
-                        <filter id="softGlow" height="500%" width="500%" x="-150%" y="-150%">
-                            <feMorphology operator="dilate" radius="2" in="SourceAlpha" result="thicken" />
-                            <feGaussianBlur in="thicken" stdDeviation="25" result="blurred" />
-                            <feFlood flood-color="rgb(255,255,255)" result="glowColor" />
-                            <feComposite in="glowColor" in2="blurred" operator="in" result="softGlow_colored" />
-                            <feMerge>
-                                <feMergeNode in="softGlow_colored"/>
-                                <feMergeNode in="SourceGraphic"/>
-                            </feMerge>
-                        </filter>
-                    </defs>
-                </svg>
+                <svg id = "portfolio-vis" class="centered-svg"></svg>
             </div>
             <div class = "title">Project constellations</div>
 
