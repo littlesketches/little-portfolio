@@ -34,6 +34,7 @@
             }
         },
         layout: {
+            nodeExtras:         false,
             type:               'byProjects',
             centralLinks:       'root-only'
         },
@@ -99,7 +100,7 @@
                 clusterFocus:   'Choose',
             },
             sim: {
-                name:          'timelineX',  //clusterHuddle,  circle, timelineX, timelineXY, timelineSpiral, constellationRadial, constellationHorizon
+                name:          'circle',  //clusterHuddle,  circle, timelineX, timelineXY, timelineSpiral, constellationRadial, constellationHorizon
             }
         },
         data:               {},
@@ -901,7 +902,7 @@ async function renderVis(data, settings){
             vis.state.visibility.clusterLabels = false
             vis.state.visibility.centralClusterLabel = false
             vis.state.visibility.links = true
-            vis.state.layout.nodeScale = 0.5
+            vis.state.layout.nodeScale = 0.65
             vis.state.layout.lsNodeScale = 0.5
             vis.methods.layout.nodeResize()
 
@@ -1130,24 +1131,30 @@ async function renderVis(data, settings){
                 )
 
             // II. Node background (used to cover links where mix-blend mode is applied)
-            vis.els.node.append('path')
-                .attr('class', d => typeof d.__proto__.type !== 'undefined'  ? 'dummy' : `node-bg ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
-                .attr("d", d =>  typeof d.__proto__.type !== 'undefined'  ? null 
-                        : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
-                        : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
-                        : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
-                )
-                .attr('transform', d =>  typeof d.__proto__.type === 'undefined' &&  (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab") 
-                    ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null)
+            if(settings.layout.nodeExtras){
+                vis.els.node.append('path')
+                    .attr('class', d => typeof d.__proto__.type !== 'undefined'  ? 'dummy' : `node-bg ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
+                    .attr("d", d =>  typeof d.__proto__.type !== 'undefined'  ? null 
+                            : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
+                            : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
+                            : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
+                    )
+                    .attr('transform', d =>  typeof d.__proto__.type === 'undefined' &&  (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab") 
+                        ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null)
+            }
 
             // III. Node shape
             vis.els.node.append("path")
                 .on('mouseover', nodeMouseover)
-                .on('mouseout', nodeMouseout)     
+                .on('mouseout', nodeMouseout)  
                 .attr('class', d => {
                     const clientObj = data.schema.orgs[d.__proto__.client]
                     return d.__proto__.type ? 'dummy' : `project-node ${d.__proto__.id} ${helpers.slugify(clientObj.type)} ${helpers.slugify(clientObj.subtype)} ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}` 
                 })
+                .attr("stroke-width", d => settings.layout.nodeExtras ? null : d.type ?  0   
+                    : typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
+                    ? 1 / vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)
+                        : vis.scales.valueThickness(data.schema.projects[d.__proto__.id].value_LS) )
                 .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null 
                         : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
                         : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
@@ -1157,19 +1164,21 @@ async function renderVis(data, settings){
                         ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)})`  : null)
 
             //  IV. Node outline (used for effects)
-            vis.els.node.append("path")
-                .attr('class', d =>  d.__proto__.type ? 'dummy' : `project-node-outline ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
-                .attr("stroke-width", d => d.type ?  0   
-                    : typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
-                    ? 1 / vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)
-                        : vis.scales.valueThickness(data.schema.projects[d.__proto__.id].value_LS) )
-                .attr("d", d =>  d.__proto__.type ? null     
-                        : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
-                        : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
-                        : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
-                )
-                .attr('transform', d =>  typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
-                    ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null  )
+            if(settings.layout.nodeExtras){
+                vis.els.node.append("path")
+                    .attr('class', d =>  d.__proto__.type ? 'dummy' : `project-node-outline ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
+                    .attr("stroke-width", d => d.type ?  0   
+                        : typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
+                        ? 1 / vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)
+                            : vis.scales.valueThickness(data.schema.projects[d.__proto__.id].value_LS) )
+                    .attr("d", d =>  d.__proto__.type ? null     
+                            : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
+                            : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
+                            : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
+                    )
+                    .attr('transform', d =>  typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
+                        ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null  )
+            }
 
             // V. Remove unused
             d3.selectAll('.dummy').remove()

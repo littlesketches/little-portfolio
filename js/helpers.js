@@ -18,6 +18,122 @@ function applyPencilFilterTextures(svg) {
     feMerge.append("feMergeNode")
         .attr("in","SourceGraphic");
 
+    // Yellow like
+    defs.append("radialGradient").classed('radial-gradient', true)
+        .attr("id", "rg-community")
+        .attr("cx", "40%")	
+        .attr("cy", "40%")	
+        .attr("r", "50%")	
+        .selectAll("stop")
+        .data([
+                {offset: "0%", color: "#FFF76B"},
+                {offset: "50%", color: "#FFF845"},
+                {offset: "90%", color: "#FFDA4E"},
+                {offset: "100%", color: "#FB8933"}
+            ])
+        .enter().append("stop")
+        .attr("offset", d => d.offset)
+        .attr("stop-color", d => d.color);
+
+    // Blue
+    defs.append("radialGradient")
+        .attr("id", "rg-non-government-organisation")
+        .attr("cx", "40%")	
+        .attr("cy", "40%")	
+        .attr("r", "50%")	
+        .selectAll("stop")
+        .data([
+                {offset: "0%", color: "#85F1FF"},
+                {offset: "50%", color: "#38B1E5 "},
+                {offset: "90%", color: "#5B92E5"},
+                {offset: "100%", color: "#11366D"}
+            ])
+        .enter().append("stop")
+        .attr("offset", d => d.offset)
+        .attr("stop-color", d => d.color);
+    defs.append("radialGradient")
+        .attr("id", "rg-ngo-pro-bono")
+        .attr("cx", "50%")	
+        .attr("cy", "50%")	
+        .attr("r", "70%")	
+        .selectAll("stop")
+        .data([
+                {offset: "0%", color: "#85F1FF"},
+                {offset: "50%", color: "#38B1E5 "},
+                {offset: "90%", color: "#5B92E5"},
+                {offset: "100%", color: "#11366D"}
+            ])
+        .enter().append("stop")
+        .attr("offset", d => d.offset)
+        .attr("stop-color", d => d.color);
+
+    defs.append("radialGradient").classed('radial-gradient', true)
+        .attr("id", "rg-private-sector")
+        .attr("cx", "40%")	
+        .attr("cy", "40%")	
+        .attr("r", "50%")	
+        .selectAll("stop")
+        .data([
+                {offset: "0%", color: "#FFCCFF"},
+                {offset: "50%", color: "#FF79A1 "},
+                {offset: "90%", color: "#FF1A7E"},
+                {offset: "100%", color: "#93003B"}
+            ])
+        .enter().append("stop")
+        .attr("offset", d => d.offset)
+        .attr("stop-color", d => d.color);
+
+
+    defs.append("radialGradient")
+        .attr("id", "rg-public-sector")
+        .attr("cx", "40%")	
+        .attr("cy", "40%")	
+        .attr("r", "50%")	
+        .selectAll("stop")
+        .data([
+                {offset: "0%", color: "#CEFFFE"},
+                {offset: "50%", color: "#47FFBF "},
+                {offset: "90%", color: "#00CDC8"},
+                {offset: "100%", color: "#0476AE"}
+            ])
+        .enter().append("stop")
+        .attr("offset", d => d.offset)
+        .attr("stop-color", d => d.color);
+
+    defs.append("radialGradient")
+        .attr("id", "rg-not-for-profit")
+        .attr("cx", "40%")	
+        .attr("cy", "40%")	
+        .attr("r", "50%")	
+        .selectAll("stop")
+        .data([
+                {offset: "0%", color: "#CEC5FE"},
+                {offset: "50%", color: "#936BD3 "},
+                {offset: "90%", color: "#9030D0"},
+                {offset: "100%", color: "#391465"}
+            ])
+        .enter().append("stop")
+        .attr("offset", d => d.offset)
+        .attr("stop-color", d => d.color);
+
+    defs.append("radialGradient")
+        .attr("id", "rg-education-and-research-lab")
+        .attr("cx", "30%")	
+        .attr("cy", "10%")	
+        .attr("r", "80%")	
+        .selectAll("stop")
+        .data([
+                {offset: "0%", color: "#E9FFE6"},
+                {offset: "50%", color: "#7BD63C "},
+                {offset: "90%", color: "#84EB6B"},
+                {offset: "100%", color: "#209500"}
+            ])
+        .enter().append("stop")
+        .attr("offset", d => d.offset)
+        .attr("stop-color", d => d.color);
+
+
+
 
     const roughPaper = defs.append("filter")
         roughPaper

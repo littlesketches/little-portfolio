@@ -11,11 +11,16 @@ body{
 }
 
 .vis-container{
-    /* display: grid; */
-    background-image: linear-gradient( rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5) ),  url('../img/milky-way-bg.png');
+    background-image: linear-gradient( rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
     background-size: cover;
     height: 100vh;
+    -webkit-transition: background-image 2s ease-in-out;
+    transition: background-image 20s ease-in-out
 }
+.vis-container.green{
+    background-image: linear-gradient( rgba(73, 210, 23, 0.5), rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
+}
+
 .svg-container{
     display: grid;
 }
@@ -64,7 +69,8 @@ body{
 }
 .project-node{
     cursor: pointer;
-    mix-blend-mode: hue;
+    /* mix-blend-mode: hue; */
+    /* filter: url(#glow); */
 }
 
 .year-node-group{
@@ -111,18 +117,7 @@ body{
 }
 
 /* Colour palettes */
-.public-sector{
-    fill: greenyellow;
-}
-.private-sector{
-    fill: magenta;
-}
-.non-government-organisation{
-    fill: aqua;
-}
-.not-for-profit{
-    fill: orange;
-}
+
 
 /***********************/
 /* DARK MODE STYLING   */
@@ -156,7 +151,8 @@ body{
 }
 .dark .project-node{
     cursor: pointer;
-    mix-blend-mode: luminosity;
+    /* mix-blend-mode: luminosity; */
+    /* stroke: #fff; */
 }
 .dark .project-node.no-mix-blend{
     mix-blend-mode: unset;
@@ -177,21 +173,35 @@ body{
 }
 
 .dark .public-sector{
-    fill:        rgb(248, 238, 182);
+    fill:       url(#rg-public-sector);
     background  :rgb(248, 238, 182);
 }
 .dark .private-sector{
-    fill:       rgb(255, 134, 161);   
+    fill:       url(#rg-private-sector);  
     background:  rgb(255, 134, 161);   
 }
 .dark .non-government-organisation{
-    fill:       rgb(58, 252, 145);
+    fill: url(#rg-non-government-organisation);
+    background: rgb(58, 252, 145);
+}
+.dark .non-government-organisation.pro-bono{
+    fill: url(#rg-ngo-pro-bono);
     background: rgb(58, 252, 145);
 }
 .dark .not-for-profit{
-    fill:       rgb(63, 223, 252);
+    fill: url(#rg-not-for-profit);
     background: rgb(63, 223, 252);
 }
+.dark .education-and-research{
+    fill: url(#rg-education-and-research);
+}
+.dark .education-and-research.lab{
+    fill: url(#rg-education-and-research-lab);
+}
+.dark .community{
+    fill: url(#rg-community);
+}
+.dark 
 
 
 /*********************************/
