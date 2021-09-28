@@ -7,15 +7,13 @@
 body{
     font-family: 'Poppins';
     margin: 0; 
-    overflow:hidden;
+    overflow :hidden;
 }
 
 .vis-container{
     background-image: linear-gradient( rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
     background-size: cover;
     height: 100vh;
-    -webkit-transition: background-image 2s ease-in-out;
-    transition: background-image 20s ease-in-out
 }
 .vis-container.green{
     background-image: linear-gradient( rgba(73, 210, 23, 0.5), rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
@@ -25,8 +23,8 @@ body{
     display: grid;
 }
 .centered-svg{
-    max-width: 90vh;
-    max-height: 90vw;
+    max-width: 85vh;
+    max-height: 85vw;
     overflow: visible;
     margin: 0 auto;
 }
