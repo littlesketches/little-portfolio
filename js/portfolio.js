@@ -170,7 +170,6 @@
                             .attr("y2", d => d.target.y);
 
                         vis.els.node.attr("transform", d => {
-                            return `translate(${d.x}, ${d.y})`
                             const projectType = typeof d.__proto__.type ==='undefined' ? data.schema.projects[d.__proto__.id].project_type : null
                             const lightPos = {x: vis.els.lsNode.node().__data__.x, y: vis.els.lsNode.node().__data__.y}
                             return (projectType === 'consulting' || projectType === 'residency') 
