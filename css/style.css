@@ -13,6 +13,8 @@ body{
     background-image: linear-gradient( rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
     background-size: cover;
     height: 100vh;
+    /* display: grid; */
+    /* justify-items: center; */
 }
 .vis-container.green{
     background-image: linear-gradient( rgba(73, 210, 23, 0.5), rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
@@ -22,14 +24,18 @@ body{
 }
 .centered-svg{
     max-width: 90vh;
-    max-height: 95vw;
+    max-height: 100vw;
     overflow: visible;
     margin: 0 auto;
 }
 .title{
-    font-size: 5vh;
+    font-size: max(3.5vw, 3.5vh);
     text-align: center;
     text-transform: uppercase;
+    cursor: pointer;
+}
+.title:hover{
+    font-weight: 600;
 }
 
 /* SVG VISUALISATION */
@@ -64,7 +70,6 @@ body{
 }
 .project-node{
     cursor: pointer;
-    /* filter: url(#glow); */
 }
 
 .year-node-group{
@@ -90,6 +95,12 @@ body{
     stroke-dasharray: 3px 3px;
     stroke-opacity: 0.5;
 }
+.ls-node-label,
+.year-node-label,
+.cluster-node-label,
+.orgType-node-label{
+    pointer-events: none;
+}
 .ls-node-label{
     font-family: 'Shadows Into Light';
     text-anchor: middle;
@@ -106,10 +117,67 @@ body{
     font-weight: 600;
 }
 .cluster-node-label{
-    font-size: 26px;
+    font-size: 24px;
+    font-weight: 600;
+    font-family: 'Shadows Into Light';
+    text-transform: uppercase;
+    text-shadow: 3px 3px 5px rgba(46, 12, 96, 0.75), 
+            -3px -3px 5px rgba(46, 12, 96, 0.75), 
+            0px 3px 5px rgb(46, 12, 96, 75%);
 }
 
-/* Colour palettes */
+.menu-group {
+    fill: #fff; 
+}
+.menu-header{
+    font-size: 20px;
+}
+.menu-item{
+    font-size: 16px;
+    opacity: 0.7;
+    cursor: pointer;
+}
+.menu-item.selected{
+    font-weight: 600;
+    opacity: 1
+
+}
+
+/* Organisation type Colour palettes */
+.public-sector{
+    fill:       url(#rg-public-sector);
+    background : #00CDC8;
+}
+.private-sector{
+    fill:       url(#rg-private-sector);  
+    background:  #FF79A1;
+}
+.non-government-organisation{
+    fill: url(#rg-non-government-organisation);
+    background: #38B1E5;
+}
+.non-government-organisation.pro-bono{
+    fill: url(#rg-ngo-pro-bono);
+    background: #38B1E5;
+}
+.not-for-profit{
+    fill: url(#rg-not-for-profit);
+    background: #936BD3;
+}
+.education-and-research{
+    fill: url(#rg-education-and-research);
+    background: #84EB6B;
+}
+.education-and-research.lab{
+    fill: url(#rg-education-and-research-lab);
+    background: #84EB6B;
+}
+.community{
+    fill: url(#rg-community);
+    background: #FFDA4E;
+}
+
+
 
 
 /***********************/
@@ -163,11 +231,11 @@ body{
 
 .dark .public-sector{
     fill:       url(#rg-public-sector);
-    background : #00CDC8;
+    background : #88FEDB;
 }
 .dark .private-sector{
     fill:       url(#rg-private-sector);  
-    background:  #FF79A1;
+    background:  #FEB9E7;
 }
 .dark .non-government-organisation{
     fill: url(#rg-non-government-organisation);
@@ -179,19 +247,19 @@ body{
 }
 .dark .not-for-profit{
     fill: url(#rg-not-for-profit);
-    background: #936BD3;
+    background: #C2B5F4;
 }
 .dark .education-and-research{
     fill: url(#rg-education-and-research);
-    background: #84EB6B;
+    background: #C2EFAC;
 }
 .dark .education-and-research.lab{
     fill: url(#rg-education-and-research-lab);
-    background: #84EB6B;
+    background: #C2EFAC;
 }
 .dark .community{
     fill: url(#rg-community);
-    background: #FFDA4E;
+    background: #FFF7A8;
 }
 
 
@@ -223,7 +291,6 @@ body{
     padding: 0.75em 1em; 
     background: rgba(255, 255, 255, 0.7); 
     font-size: 0.65rem; 
-    /* border: 1px solid #ddd;  */
     border-radius: 1rem;
     z-index: 10; 
     pointer-events: none;
