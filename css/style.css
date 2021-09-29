@@ -33,18 +33,18 @@ body{
 }
 .title-container{
     display: grid;
-    grid-template-columns: 1fr 4fr 1fr;
+    /* grid-template-columns: 1fr 5fr 1fr; */
+    justify-content: center;
 }
 .title{
-    grid-area: 1/ 2/ 2/ 3;
+   display: inline-block;
     font-size: max(3.5vw, 3.5vh);
     text-align: center;
     text-transform: uppercase;
-    line-height: 1.1;
-    align-self: center;
+
 }
 .title-button{
-    display: grid;
+    display: inline-block;
     cursor: pointer;
     font-size: max(3.5vw, 3.5vh);
     align-self: middle;
@@ -59,12 +59,12 @@ body{
     transform: scaleY(1);
 }
 .button-prev{
-    grid-area: 1/ 1/ 2/ 2;
     justify-self: right;
+    padding-right: 1rem;
 }
 .button-next{
-    grid-area: 1/ 3/ 2/ 4;
     justify-self: left;
+    padding-left: 1rem;
 }
 
 /* SVG VISUALISATION */

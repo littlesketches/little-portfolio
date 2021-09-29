@@ -177,7 +177,7 @@
 
                 updateAnnotation: (simName = vis.state.sim.name) => {
                     const data = settings.scene.simOrder.filter(d => d.name === vis.state.sim.name)[0]
-
+                    d3.select('.title-container').style('opacity', null)
                     vis.els.annotation.transition().duration(1000)
                         .attr('transform', `translate(${data.posX}, ${data.posY})`)
 
@@ -1243,7 +1243,7 @@ async function renderVis(data, settings){
 
             // 2. Set new simulation forces for horizon constellation layout
             vis.state.simulation  = d3.forceSimulation(vis.data.nodes)
-                .force("charge", d3.forceManyBody().strength( (d, i) => d.__proto__.type ? 10 : 06) )
+                .force("charge", d3.forceManyBody().strength( (d, i) => d.__proto__.type ? 10 : 0) )
                 .force("centreline", null)
                 .force("collision", d3.forceCollide()
                     .radius( (d, i) =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
@@ -1251,7 +1251,7 @@ async function renderVis(data, settings){
                             : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) * 1.5 
                     )
                 )
-                .force("x", d3.forceX().x( d => d.__proto__.type ? width :  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
+                .force("x", d3.forceX().x( d => d.__proto__.type ? width - settings.dims.margin.right :  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
                     .strength(d => d.__proto__.type ? 1: 0.5)
                 )
                 .force("y", d3.forceY().y( d =>  d.__proto__.type ? settings.dims.margin.top   :  ratingScale(data.schema.projects[d.__proto__.id][ratingName] )  )
@@ -1387,19 +1387,23 @@ async function renderVis(data, settings){
             .attr('x', 0)
 
 
-    /////////////////////////////
-    ////  START SIMULATION   ////
-    /////////////////////////////
+    ///////////////////////////////////////////////
+    ////  START SIMULATION AND SETUP VIS ////
+    ///////////////////////////////////////////////
+
+
+    setupAnnotations()
+    addClusterMenu()
 
     vis.methods.ui.updateSimLayout(vis.state.sim.name)
+
+
 
 
     ////////////////////////////
     ////  ANNOTATIONS ////
     ////////////////////////////
     
-    setupAnnotations()
-    addClusterMenu()
 
 
     function setupAnnotations(){
@@ -1413,10 +1417,10 @@ async function renderVis(data, settings){
         settings.scene.simOrder = [
                 {   name:       'circle',                
                     title:      'Little constellations', 
-                    annotation: 'We are and dreaming of places where lovers have wings. And setting controls for the heart of the sun. Welcome to our project explorer.',
+                    annotation: 'Welcome to our project explorer. Navigate with the arrow buttons, play with whatever you can, and set controls for the heart of the sun.',
                     posX:       centreline.x,
                     posY:       height + settings.dims.margin.top,
-                    wrapWidth:  width * 0.5,
+                    wrapWidth:  width * 0.65,
                     textAnchor: 'middle'
                 },
                 {   name:       'clusterHuddle',         
@@ -1437,7 +1441,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'timelineX',    
                     title:      'Wave of mutilation', // The Pixies
-                    annotation: `Seeing when work was completed is a useful way to see how the shape and size of projects we do has evolved over time. It's also a a great way to illustrate a project's lineage.`,
+                    annotation: `Seeing when work was completed is a useful way to see how the shapes and sizes of our projects has evolved over time. It's also a a great way to illustrate a project's lineage.`,
                     posX:       centreline.x,
                     posY:       threeQuarter.y,
                     wrapWidth:  width * 0.75,
@@ -1445,7 +1449,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'timelineXY',            
                     title:      'Inertia creeps',   // Massive Attack
-                    annotation: `Changing the angle of a timeline here doesn't really reveal anything new.But this is shaped a little like the Milky Way and bit fun and quirky. And we really like that!`,
+                    annotation: `Changing the angle of a timeline here doesn't really reveal anything new. But it's is shaped a little like the Milky Way and is just a bit delightful. And we really like that!`,
                     posX:       threeQuarter.x,
                     posY:       threeQuarter.y + oneQuarter.y * 0.5,
                     wrapWidth:  width * 0.4,
@@ -1453,7 +1457,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'timelineSpiral',      
                     title:      'Road to nowhere',  // Talikng Heads
-                    annotation: `Putting all our work on a spiralling timeline is delightfully fascinating way to explore the patterns of project work...`,
+                    annotation: `Putting all our work on a spiralling timeline is fascinating way to explore the patterns of project work...`,
                     posX:       centreline.x,
                     posY:       settings.dims.margin.top * 0.5,
                     wrapWidth:  width * 0.75,
@@ -1461,7 +1465,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'constellationRadial',   
                     title:      'Wandering star',       // Portishead
-                    annotation: `Letting our projects wander within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
+                    annotation: `Letting these projects wander within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
                     posX:       centreline.x,
                     posY:       settings.dims.margin.top * 0.5,
                     wrapWidth:  width * 0.75,
@@ -1469,7 +1473,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'constellationHorizon',  
                     title:      'The sky lit up',       // PJ Harvey
-                    annotation: `Stuff like project timing, value and type are all kinda interesting, and d kinda boring at the same time. In this view we've added some other project criteria and come up and new way to see what floats to the heavens.`,
+                    annotation: `Visualising stuff like project timing, value and type is kinda interesting, and also kinda boring at the same time. Here view we've added some other project criteria to see what work ascends to the heavens..`,
                     posX:       settings.dims.margin.left,
                     posY:       settings.dims.margin.top * 0.5,
                     wrapWidth:  width * 0.5,
@@ -1490,10 +1494,9 @@ async function renderVis(data, settings){
     };
 
 
-
     function addClusterMenu(){
         const menuGroup = vis.els.svg.append('g').classed('cluster-menu menu-group annotation-group', true)
-                .attr('transform', `translate(${0}, ${settings.dims.margin.top * 0.5})`)
+                .attr('transform', `translate(${settings.dims.margin.left}, ${settings.dims.margin.top * 0.5})`)
         menuGroup.append('text')
             .classed('menu-header', true)
             .text('Explore by theme:')
@@ -1568,7 +1571,6 @@ async function renderVis(data, settings){
         }
     };
 
-
     function changeSim(next = true){
         const currentIndex = settings.scene.simOrder.map(d => d.name).indexOf(vis.state.sim.name)
         let nextSimIndex, nextSim
@@ -1584,7 +1586,6 @@ async function renderVis(data, settings){
 
         vis.methods.ui.updateSimLayout(settings.scene.simOrder[nextSimIndex].name)
         vis.methods.ui.updateAnnotation()
-
     };
 
 
