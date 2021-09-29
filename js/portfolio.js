@@ -170,6 +170,7 @@
                             .attr("y2", d => d.target.y);
 
                         vis.els.node.attr("transform", d => {
+                            return `translate(${d.x}, ${d.y})`
                             const projectType = typeof d.__proto__.type ==='undefined' ? data.schema.projects[d.__proto__.id].project_type : null
                             const lightPos = {x: vis.els.lsNode.node().__data__.x, y: vis.els.lsNode.node().__data__.y}
                             return (projectType === 'consulting' || projectType === 'residency') 
@@ -1373,14 +1374,14 @@ async function renderVis(data, settings){
 
         // ii. Add centered LS node with label
         vis.els.lsNode = d3.select('.ls-node-group')
-        vis.els.lsNode.append('g')
+        const lsNodeContainer = vis.els.lsNode.append('g')
             .classed('ls-node-icon-container', true)
             .on('mouseover', lsNodeMouseover)
             .on('mouseout', nodeMouseout)
 
-        vis.els.lsNode .append('path').classed('ls-node', true).attr('d', settings.geometry.icon.heart750)
-        vis.els.lsNode .append('text').classed('ls-node-label', true).attr('y', -20).text('Little')
-        vis.els.lsNode .append('text').classed('ls-node-label', true).attr('y', 10).text('Sketches')
+        lsNodeContainer.append('path').classed('ls-node', true).attr('d', settings.geometry.icon.heart750)
+        lsNodeContainer.append('text').classed('ls-node-label', true).attr('y', -20).text('Little')
+        lsNodeContainer.append('text').classed('ls-node-label', true).attr('y', 10).text('Sketches')
 
         // iii. Add year node group
         d3.selectAll('.year-node-group')
