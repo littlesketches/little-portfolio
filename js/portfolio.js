@@ -157,8 +157,9 @@
                     d3.selectAll('.cluster-node-label').transition().duration(500).style('opacity', vis.state.visibility.centralClusterLabel ? null : 0)
                     d3.selectAll('.ls-node-label').transition().duration(500).style('opacity', vis.state.visibility.lsLabel ? null : 0)
                     d3.select('.cluster-menu').transition().duration(500).style('opacity', vis.state.visibility.clusterSelector ? null : 0)
-                    d3.selectAll('.cluster-item').style('pointer-events', vis.state.visibility.clusterSelector ? null : 'none')
-   
+                    d3.selectAll('.cluster-item').style('pointer-events', vis.state.visibility.clusterSelector ? null : 'none'),
+                    vis.els.lsNode.on('click', name === 'clusterFocus' ? vis.methods.ui.lsNodeClick : null)
+
                     vis.methods.layout.nodeResize()
 
                     // X. Tick handlers
@@ -167,11 +168,15 @@
                             .attr("y1", d => d.source.y)
                             .attr("x2", d => d.target.x)
                             .attr("y2", d => d.target.y);
-                        vis.els.node.attr("transform", d => `translate(${d.x}, ${d.y})`)
+
+                        vis.els.node.attr("transform", d => {
+                            const projectType = typeof d.__proto__.type ==='undefined' ? data.schema.projects[d.__proto__.id].project_type : null
+                            const lightPos = {x: vis.els.lsNode.node().__data__.x, y: vis.els.lsNode.node().__data__.y}
+                            return (projectType === 'consulting' || projectType === 'residency') 
+                                ?`translate(${d.x}, ${d.y}) rotate(${-45 + helpers.angle(lightPos, {x: d.x, y: d.y})})`: `translate(${d.x}, ${d.y})` 
+                        })
                     };
                     function onEnd(){
-                        // vis.els.svg.classed('sketch', vis.state.visibility.sketch)
-                        // vis.els.svg.classed('glow', vis.state.visibility.glow)
                     };
                 }, // end updateSimLayout()
 
@@ -222,7 +227,7 @@
                     }
                     // c. Style the connected network
                     const networkClassString = [...new Set(childID_array)].map(d => `.${d}`).toString()
-                    d3.selectAll(networkClassString).classed('no-mix-blend', true).style('opacity', null)
+                    d3.selectAll(networkClassString).style('opacity', null)
                     d3.selectAll(`.project-group:not(${networkClassString})`).style('opacity', 0.1)
                     d3.selectAll(`.project-link:not(${networkClassString})`).style('opacity', 0)
                     d3.selectAll(`.project-link:not(${networkClassString})`).style('opacity', 0)
@@ -305,7 +310,22 @@
                         .style('opacity' , 1)
                         .style('left', `${toolTipLeft}px`)
                         .style('top', `${toolTipTop}px`)
-                } // end showTipTool()
+                }, // end showTipTool()
+
+                lsNodeClick: () =>{
+                    // Update cluster focus
+                    if(vis.state.sim.name === 'clusterFocus'){
+                        let index = data.list.project[vis.state.layout.clusterGroup].indexOf(vis.state.layout.clusterFocus)
+                        if(index === -1){
+                            vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][0],
+                            index = 0
+                        }
+
+                        vis.methods.ui.updateSimLayout('clusterFocus')
+                        vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][(index +1) % data.list.project[vis.state.layout.clusterGroup].length]
+                    }
+                }
+
             },
 
             layout: {
@@ -333,6 +353,7 @@
             args = Array.prototype.slice.call(arguments, 2);
             return ctx[fnName].apply(ctx, args);
         },
+        angle: (p1, p2) => Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI,
         slugify: function (str) {
             str = str.replace(/^\s+|\s+$/g, '').toLowerCase(); // trim           
             const from = "àáäâèéëêìíïîòóöôùúüûñç·/_,:;",      // remove accents, swap ñ for n, etc
@@ -640,17 +661,19 @@ async function renderVis(data, settings){
         centralCluster:  settings.dims.width / 1080 * 130
     }
 
-    // b. Add filter effects in <defs> and layer groups
+    // b. Set SVG filter effects (in <defs>) and layer groups
     addFilters(vis.els.svg)
 
     vis.els.chartArea = vis.els.svg.append('g').attr('id', 'chart-group')
         .attr('transform', `translate(${settings.dims.margin.left}, ${settings.dims.margin.top})`)
     vis.els.annotation = vis.els.svg.append('g').attr('id', 'annotation-group')
 
-    // e. Set cluster positions
+    // c. Add geometry and annotation/menu components
     setClusterPositions()
+    setupAnnotations()
+    addClusterMenu()
 
-    // f. Set data scales
+    // d. Set data scales
     vis.scales = {
         timeX:          d3.scaleTime().domain(d3.extent(data.list.yearDates ))
                             .range([settings.dims.margin.left,  settings.dims.width - settings.dims.margin.right * 1.5]),
@@ -1349,15 +1372,15 @@ async function renderVis(data, settings){
     
 
         // ii. Add centered LS node with label
-        const lsNode = d3.select('.ls-node-group').append('g')
+        vis.els.lsNode = d3.select('.ls-node-group')
+        vis.els.lsNode.append('g')
             .classed('ls-node-icon-container', true)
             .on('mouseover', lsNodeMouseover)
             .on('mouseout', nodeMouseout)
-            .on('click', lsNodeClick)
 
-        lsNode.append('path').classed('ls-node', true).attr('d', settings.geometry.icon.heart750)
-        lsNode.append('text').classed('ls-node-label', true).attr('y', -20).text('Little')
-        lsNode.append('text').classed('ls-node-label', true).attr('y', 10).text('Sketches')
+        vis.els.lsNode .append('path').classed('ls-node', true).attr('d', settings.geometry.icon.heart750)
+        vis.els.lsNode .append('text').classed('ls-node-label', true).attr('y', -20).text('Little')
+        vis.els.lsNode .append('text').classed('ls-node-label', true).attr('y', 10).text('Sketches')
 
         // iii. Add year node group
         d3.selectAll('.year-node-group')
@@ -1387,25 +1410,20 @@ async function renderVis(data, settings){
             .attr('x', 0)
 
 
-    ///////////////////////////////////////////////
+    /////////////////////////////////////////
     ////  START SIMULATION AND SETUP VIS ////
-    ///////////////////////////////////////////////
-
-
-    setupAnnotations()
-    addClusterMenu()
+    /////////////////////////////////////////
 
     vis.methods.ui.updateSimLayout(vis.state.sim.name)
+    d3.select('.button-next').on('click', () => changeSim(true))
+    d3.select('.button-prev').on('click', () => changeSim(false))
 
 
-
-
-    ////////////////////////////
-    ////  ANNOTATIONS ////
-    ////////////////////////////
+    ///////////////////////////////////////////////
+    ////  VIS SETUP AND EVENT HANDLER METHODS ////
+    ///////////////////////////////////////////////
     
-
-
+    // VIS SETUP
     function setupAnnotations(){
         // 1. Add annotation elements
         vis.els.annotation.classed('narrative annotation-group', true)
@@ -1415,84 +1433,83 @@ async function renderVis(data, settings){
 
         // 2. Add annotation settings
         settings.scene.simOrder = [
-                {   name:       'circle',                
-                    title:      'Little constellations', 
-                    annotation: 'Welcome to our project explorer. Navigate with the arrow buttons, play with whatever you can, and set controls for the heart of the sun.',
-                    posX:       centreline.x,
-                    posY:       height + settings.dims.margin.top,
-                    wrapWidth:  width * 0.65,
-                    textAnchor: 'middle'
-                },
-                {   name:       'clusterHuddle',         
-                    title:      'All my friends', // LCD Soundsystem
-                    annotation: `These playful little shapes represent all of the projects done by Little Sketches (so far). All the orbs are paid projects sized by value, while pro bono jobs are hearts sized by a notional value. And the beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
-                    posX:       centreline.x,
-                    posY:       threeQuarter.y,
-                    wrapWidth:  width * 0.675,
-                    textAnchor: 'middle'
-                },
-                {   name:       'clusterMultiFoci',      
-                    title:      'Everything in its right place', // Radiohead
-                    annotation: `These clusters show what the colour coding of each project means: they group projects by the type of clients or audience each piece is for. You can tap or hover over a project to learn a little bit about it, and to see how it might be connected to other projects.`,
-                    posX:       centreline.x,
-                    posY:       twoThird.y,
-                    wrapWidth:  width * 0.4,
-                    textAnchor: 'middle'
-                },
-                {   name:       'timelineX',    
-                    title:      'Wave of mutilation', // The Pixies
-                    annotation: `Seeing when work was completed is a useful way to see how the shapes and sizes of our projects has evolved over time. It's also a a great way to illustrate a project's lineage.`,
-                    posX:       centreline.x,
-                    posY:       threeQuarter.y,
-                    wrapWidth:  width * 0.75,
-                    textAnchor: 'middle'
-                },
-                {   name:       'timelineXY',            
-                    title:      'Inertia creeps',   // Massive Attack
-                    annotation: `Changing the angle of a timeline here doesn't really reveal anything new. But it's is shaped a little like the Milky Way and is just a bit delightful. And we really like that!`,
-                    posX:       threeQuarter.x,
-                    posY:       threeQuarter.y + oneQuarter.y * 0.5,
-                    wrapWidth:  width * 0.4,
-                    textAnchor: 'middle'
-                },
-                {   name:       'timelineSpiral',      
-                    title:      'Road to nowhere',  // Talikng Heads
-                    annotation: `Putting all our work on a spiralling timeline is fascinating way to explore the patterns of project work...`,
-                    posX:       centreline.x,
-                    posY:       settings.dims.margin.top * 0.5,
-                    wrapWidth:  width * 0.75,
-                    textAnchor: 'middle'
-                },
-                {   name:       'constellationRadial',   
-                    title:      'Wandering star',       // Portishead
-                    annotation: `Letting these projects wander within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
-                    posX:       centreline.x,
-                    posY:       settings.dims.margin.top * 0.5,
-                    wrapWidth:  width * 0.75,
-                    textAnchor: 'middle'
-                },
-                {   name:       'constellationHorizon',  
-                    title:      'The sky lit up',       // PJ Harvey
-                    annotation: `Visualising stuff like project timing, value and type is kinda interesting, and also kinda boring at the same time. Here view we've added some other project criteria to see what work ascends to the heavens..`,
-                    posX:       settings.dims.margin.left,
-                    posY:       settings.dims.margin.top * 0.5,
-                    wrapWidth:  width * 0.5,
-                    textAnchor: 'start'
-                },
-                {   name:       'clusterFocus',         
-                    title:      'Space oddity',         // David Bowie
-                    annotation: '',
-                    posX:       settings.dims.margin.left,
-                    posY:       settings.dims.margin.top * 0.5,
-                    wrapWidth:  width * 0.35,
-                    textAnchor: 'start'
-                }
-            ] 
+            {   name:       'circle',                
+                title:      'Little constellations', 
+                annotation: 'Welcome to our project explorer. Navigate with the arrow buttons, play with whatever you can, and set controls for the heart of the sun.',
+                posX:       centreline.x,
+                posY:       height + settings.dims.margin.top,
+                wrapWidth:  width * 0.65,
+                textAnchor: 'middle'
+            },
+            {   name:       'clusterHuddle',         
+                title:      'All my friends', // LCD Soundsystem
+                annotation: `These playful little shapes represent all of the projects done by Little Sketches (so far). All the orbs are paid projects sized by value, while pro bono jobs are hearts sized by a notional value. And the beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
+                posX:       centreline.x,
+                posY:       threeQuarter.y,
+                wrapWidth:  width * 0.675,
+                textAnchor: 'middle'
+            },
+            {   name:       'clusterMultiFoci',      
+                title:      'Everything in its right place', // Radiohead
+                annotation: `These clusters show what the colour coding of each project means: they group projects by the type of clients or audience each piece is for. You can tap or hover over a project to learn a little bit about it, and to see how it might be connected to other projects.`,
+                posX:       centreline.x,
+                posY:       twoThird.y,
+                wrapWidth:  width * 0.4,
+                textAnchor: 'middle'
+            },
+            {   name:       'timelineX',    
+                title:      'Wave of mutilation', // The Pixies
+                annotation: `Seeing when work was completed is a useful way to see how the shapes and sizes of our projects has evolved over time. It's also a a great way to illustrate a project's lineage.`,
+                posX:       centreline.x,
+                posY:       threeQuarter.y,
+                wrapWidth:  width * 0.75,
+                textAnchor: 'middle'
+            },
+            {   name:       'timelineXY',            
+                title:      'Inertia creeps',   // Massive Attack
+                annotation: `Changing the angle of a timeline here doesn't really reveal anything new. But it's is shaped a little like the Milky Way and is just a bit delightful. And we really like that!`,
+                posX:       threeQuarter.x,
+                posY:       threeQuarter.y + oneQuarter.y * 0.5,
+                wrapWidth:  width * 0.4,
+                textAnchor: 'middle'
+            },
+            {   name:       'timelineSpiral',      
+                title:      'Road to nowhere',  // Talikng Heads
+                annotation: `Putting all our work on a spiralling timeline is fascinating way to explore the patterns of project work...`   ,
+                posX:       centreline.x,
+                posY:       settings.dims.margin.top * 0.5,
+                wrapWidth:  width * 0.75,
+                textAnchor: 'middle'
+            },
+            {   name:       'constellationRadial',   
+                title:      'Wandering star',       // Portishead
+                annotation: `Letting these projects wander within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
+                posX:       centreline.x,
+                posY:       settings.dims.margin.top * 0.5,
+                wrapWidth:  width * 0.75,
+                textAnchor: 'middle'
+            },
+            {   name:       'constellationHorizon',  
+                title:      'The sky lit up',       // PJ Harvey
+                annotation: `Visualising stuff like project timing, value and type is kinda interesting, and also kinda boring at the same time. Here view we've added some other project criteria to see what work ascends to the heavens..`,
+                posX:       settings.dims.margin.left,
+                posY:       settings.dims.margin.top * 0.5,
+                wrapWidth:  width * 0.5,
+                textAnchor: 'start'
+            },
+            {   name:       'clusterFocus',         
+                title:      'Space oddity',         // David Bowie
+                annotation: '',
+                posX:       settings.dims.margin.left,
+                posY:       settings.dims.margin.top * 0.5,
+                wrapWidth:  width * 0.35,
+                textAnchor: 'start'
+            }
+        ] 
 
         // 3. Call the initial setup 
         vis.methods.ui.updateAnnotation()
     };
-
 
     function addClusterMenu(){
         const menuGroup = vis.els.svg.append('g').classed('cluster-menu menu-group annotation-group', true)
@@ -1511,7 +1528,6 @@ async function renderVis(data, settings){
                     d3.select(this).classed('selected', true)
                     vis.state.layout.clusterGroup = key.slice(4)
                     vis.state.layout.clusterFocus = "Tap here" 
-
                     vis.methods.ui.updateSimLayout('clusterFocus')
                 })
         }) 
@@ -1522,17 +1538,38 @@ async function renderVis(data, settings){
         d3.selectAll('.cluster-item').style('pointer-events', vis.state.visibility.clusterSelector ? null : 'none')
     };
 
+    function setClusterPositions(){
+        settings.clusters = {
+            orgType: {
+                0: { //'Community'
+                    x:  centreline.x,
+                    y:  oneQuarter.y / 2
+                },
+                1: { //'Education and research'
+                    x:  centreline.x,
+                    y:  threeQuarter.y + oneQuarter.y /2
+                },
+                2: { // 'Non-government organisation' 
+                    x:  oneQuarter.x * 0.5,
+                    y:  oneThird.y
+                },
+                3: { //  'Non-for-profit'
+                    x:  threeQuarter.x + oneQuarter.x * 0.5,
+                    y:  oneThird.y
+                },
+                4: { // Private sector
+                    x:  threeQuarter.x + oneQuarter.x * 0.5,
+                    y:  twoThird.y
+                },
+                5: { // Public sector
+                    x:  oneQuarter.x * 0.5,
+                    y:  twoThird.y
+                }
+            }
+        }
+    };
 
-
-    ////////////////////////////
-    ////  VIS INTERACTIONS  ////
-    ////////////////////////////
-
-    d3.select('.button-next').on('click', () => changeSim(true))
-    d3.select('.button-prev').on('click', () => changeSim(false))
-
-
-    // PROJECT NODES
+    // EVENT HANDLERS
     function nodeMouseover(event, d){
         // 1. Tooltip for project nodes
         if(typeof d.__proto__.id !== 'undefined') vis.methods.ui.showTooltip(this, d) 
@@ -1544,32 +1581,17 @@ async function renderVis(data, settings){
         vis.methods.ui.highlightNetwork(nodeID)
     }; // end nodeMouseover()
 
-        
     function nodeMouseout(){
         d3.select("#tooltip").style('opacity' , 0).attr('class', 'tooltip')
-        d3.selectAll('.project-node').classed('no-mix-blend', false).style('opacity', null)
+        d3.selectAll('.project-node').style('opacity', null)
         d3.selectAll('.project-group').style('opacity', null)
         d3.selectAll('.project-link').style('opacity', vis.state.visibility.links ? null : 0)
     }; // // end nodeMouseout()
 
-    // LS NODE
     function lsNodeMouseover(){
         d3.selectAll('.project-link').style('opacity', null)
     }; // end lsNodeMouseover()
 
-    function lsNodeClick(){
-        // Update cluster focus
-        if(vis.state.sim.name === 'clusterFocus'){
-            let index = data.list.project[vis.state.layout.clusterGroup].indexOf(vis.state.layout.clusterFocus)
-            if(index === -1){
-                 vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][0],
-                 index = 0
-            }
-
-            vis.methods.ui.updateSimLayout('clusterFocus')
-            vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][(index +1) % data.list.project[vis.state.layout.clusterGroup].length]
-        }
-    };
 
     function changeSim(next = true){
         const currentIndex = settings.scene.simOrder.map(d => d.name).indexOf(vis.state.sim.name)
@@ -1587,7 +1609,6 @@ async function renderVis(data, settings){
         vis.methods.ui.updateSimLayout(settings.scene.simOrder[nextSimIndex].name)
         vis.methods.ui.updateAnnotation()
     };
-
 
     // Key press views
     document.addEventListener("keypress",  async (event) =>{ 
@@ -1654,35 +1675,5 @@ async function renderVis(data, settings){
         }
     });
 
-    function setClusterPositions(){
-        settings.clusters = {
-            orgType: {
-                0: { //'Community'
-                    x:  centreline.x,
-                    y:  oneQuarter.y / 2
-                },
-                1: { //'Education and research'
-                    x:  centreline.x,
-                    y:  threeQuarter.y + oneQuarter.y /2
-                },
-                2: { // 'Non-government organisation' 
-                    x:  oneQuarter.x * 0.5,
-                    y:  oneThird.y
-                },
-                3: { //  'Non-for-profit'
-                    x:  threeQuarter.x + oneQuarter.x * 0.5,
-                    y:  oneThird.y
-                },
-                4: { // Private sector
-                    x:  threeQuarter.x + oneQuarter.x * 0.5,
-                    y:  twoThird.y
-                },
-                5: { // Public sector
-                    x:  oneQuarter.x * 0.5,
-                    y:  twoThird.y
-                }
-            }
-        }
-    };
 
 };
