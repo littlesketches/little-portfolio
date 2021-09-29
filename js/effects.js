@@ -87,7 +87,7 @@ function addFilters(svg) {
         .attr("stop-color", d => d.color);
 
     // Light blue centered radial
-    defs.append("radialGradient")
+    defs.append("radialGradient").classed('radial-gradient', true)
         .attr("id", "rg-ngo-pro-bono")
         .attr("cx", "50%")	
         .attr("cy", "50%")	
@@ -138,7 +138,7 @@ function addFilters(svg) {
         .attr("stop-color", d => d.color);
 
     // Purple offset radial gradient
-    defs.append("radialGradient")
+    defs.append("radialGradient").classed('radial-gradient', true)
         .attr("id", "rg-not-for-profit")
         .attr("cx", "40%")	
         .attr("cy", "40%")	
@@ -155,7 +155,7 @@ function addFilters(svg) {
         .attr("stop-color", d => d.color);
 
     // Light green offset for beaker
-    defs.append("radialGradient")
+    defs.append("radialGradient").classed('radial-gradient', true)
         .attr("id", "rg-education-and-research-lab")
         .attr("cx", "30%")	
         .attr("cy", "10%")	

@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;600&family=Shadows+Into+Light&display=swap');
 /**************/
 /*** LAYOUT ***/
@@ -9,16 +8,20 @@ body{
     margin: 0; 
     overflow :hidden;
 }
-.vis-container{
+
+.content-container{
     background-image: linear-gradient( rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
     background-size: cover;
     height: 100vh;
-    /* display: grid; */
-    /* justify-items: center; */
+    display: grid;
+    align-items: center;
 }
-.vis-container.green{
+.content-container.green{
     background-image: linear-gradient( rgba(73, 210, 23, 0.5), rgba(43, 10, 104, 0.5),  rgba(0, 0, 0, 0.8) ),  url('../img/milky-way-bg.png');
 }
+.vis-container{
+}
+
 .svg-container{
     display: grid;
 }
@@ -28,14 +31,40 @@ body{
     overflow: visible;
     margin: 0 auto;
 }
+.title-container{
+    display: grid;
+    grid-template-columns: 1fr 4fr 1fr;
+}
 .title{
+    grid-area: 1/ 2/ 2/ 3;
     font-size: max(3.5vw, 3.5vh);
     text-align: center;
     text-transform: uppercase;
-    cursor: pointer;
+    line-height: 1.1;
+    align-self: center;
 }
-.title:hover{
-    font-weight: 600;
+.title-button{
+    display: grid;
+    cursor: pointer;
+    font-size: max(3.5vw, 3.5vh);
+    align-self: middle;
+    transform: scaleY(2);
+    transition: 0.2s;
+}
+.title-button:hover{
+    /* font-size: max(3.5vw, 3.5vh); */
+    /* font-weight: 600; */
+}
+.title-button:active{
+    transform: scaleY(1);
+}
+.button-prev{
+    grid-area: 1/ 1/ 2/ 2;
+    justify-self: right;
+}
+.button-next{
+    grid-area: 1/ 3/ 2/ 4;
+    justify-self: left;
 }
 
 /* SVG VISUALISATION */
@@ -117,8 +146,8 @@ body{
     font-weight: 600;
 }
 .cluster-node-label{
-    font-size: 24px;
-    font-weight: 600;
+    font-size: 30px;
+    font-weight: 800;
     font-family: 'Shadows Into Light';
     text-transform: uppercase;
     text-shadow: 3px 3px 5px rgba(46, 12, 96, 0.75), 
@@ -126,21 +155,25 @@ body{
             0px 3px 5px rgb(46, 12, 96, 75%);
 }
 
+.annotation,
 .menu-group {
     fill: #fff; 
 }
+.annotation,
+.menu-item{
+    font-size: 16px;
+}
+
 .menu-header{
     font-size: 20px;
 }
 .menu-item{
-    font-size: 16px;
     opacity: 0.7;
     cursor: pointer;
 }
 .menu-item.selected{
     font-weight: 600;
     opacity: 1
-
 }
 
 /* Organisation type Colour palettes */
@@ -184,7 +217,7 @@ body{
 /* DARK MODE STYLING   */
 /***********************/
 
-.dark .title{
+.dark .title-container{
     color: #fff;
 }
 .dark .bg-layer{

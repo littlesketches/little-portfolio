@@ -52,22 +52,11 @@
                 ctg_domains:        "Domain knowledge",
                 ctg_tech:           "Tools and technologies",
                 ctg_skills:         "Capabilities",
+                ctg_roles:          "Roles",
                 ctg_themes:         "Little threads",
             }
         },
-        scene: {
-            simOrder: [
-                'circle',
-                'clusterHuddle',
-                'clusterMultiFoci',
-                'timelineX',
-                'timelineXY',
-                'timelineSpiral',
-                'constellationRadial',
-                'constellationHorizon',
-                'clusterFocus'
-            ] 
-        }
+        scene: {}
     }
 
     const data = {
@@ -110,7 +99,7 @@
                 ratingName:     'fame',
                 clusterType:    'orgType',
                 clusterGroup:   'domains',
-                clusterFocus:   'Tap to see',
+                clusterFocus:   'Tap here',
             },
             sim: {
                 name:          'circle',  //clusterHuddle,  circle, timelineX, timelineXY, timelineSpiral, constellationRadial, constellationHorizon
@@ -170,8 +159,6 @@
                     d3.select('.cluster-menu').transition().duration(500).style('opacity', vis.state.visibility.clusterSelector ? null : 0)
                     d3.selectAll('.cluster-item').style('pointer-events', vis.state.visibility.clusterSelector ? null : 'none')
    
-
-
                     vis.methods.layout.nodeResize()
 
                     // X. Tick handlers
@@ -186,7 +173,31 @@
                         // vis.els.svg.classed('sketch', vis.state.visibility.sketch)
                         // vis.els.svg.classed('glow', vis.state.visibility.glow)
                     };
-                },
+                }, // end updateSimLayout()
+
+                updateAnnotation: (simName = vis.state.sim.name) => {
+                    const data = settings.scene.simOrder.filter(d => d.name === vis.state.sim.name)[0]
+
+                    vis.els.annotation.transition().duration(1000)
+                        .attr('transform', `translate(${data.posX}, ${data.posY})`)
+
+                    vis.els.annotation.select('text').transition().duration(500).style('opacity', 0)
+                    d3.select('.title').transition().duration(500).style('opacity', 0)
+
+                    setTimeout(() => {
+                        vis.els.annotation.select('text')
+                            .style('text-anchor', data.textAnchor)
+                            .text(data.annotation)
+                            .call( helpers.wrap, data.wrapWidth, 1.25, true)
+                            .transition().duration(500).style('opacity', null)     
+
+                        d3.select('.title')
+                            .html(data.title)
+                            .transition().duration(500).style('opacity', null)
+
+
+                    }, 500);
+                }, // end updateAnnotation
 
                 highlightNetwork: (nodeID) =>{
                     let  projectData = data.schema.projects[nodeID]
@@ -294,11 +305,9 @@
                         .style('opacity' , 1)
                         .style('left', `${toolTipLeft}px`)
                         .style('top', `${toolTipTop}px`)
-                }
-
-
-
+                } // end showTipTool()
             },
+
             layout: {
                 nodeResize: (nodeScale = vis.state.layout.nodeScale, lsNodeScale = vis.state.layout.lsNodeScale) => {
                     // a. Update scale and all project nodes
@@ -605,18 +614,16 @@ async function transformData(){
 
 
 async function renderVis(data, settings){
-    // Chart area and layers
+
+    ////////////////////////////////////////////////////
+    //// 1. SETUP SVG DEFS, CHART AREAS AND LAYERS  ////
+    ////////////////////////////////////////////////////
+
+    // a. Set SVG dimensions and canvas size-specfic layout dimensions
     vis.els.svg = d3.select(`#${settings.svgID}`)
         .classed('centre-svg', true)
         .attr('viewBox',  `0 0 ${settings.dims.width} ${settings.dims.height} `)
 
-    // Add filters in defs
-    addFilters(vis.els.svg)
-
-    const chartArea = vis.els.svg.append('g').attr('id', 'chart-group')
-        .attr('transform', `translate(${settings.dims.margin.left}, ${settings.dims.margin.top})`)
-
-    // Set responsive dims
     const width         = settings.dims.width - settings.dims.margin.left - settings.dims.margin.right,
         height          = settings.dims.height - settings.dims.margin.top - settings.dims.margin.bottom,
         centreline      = {x: width * 0.5 + settings.dims.margin.left, y: height * 0.5 + settings.dims.margin.top },
@@ -633,10 +640,17 @@ async function renderVis(data, settings){
         centralCluster:  settings.dims.width / 1080 * 130
     }
 
-    // Set clusters 
+    // b. Add filter effects in <defs> and layer groups
+    addFilters(vis.els.svg)
+
+    vis.els.chartArea = vis.els.svg.append('g').attr('id', 'chart-group')
+        .attr('transform', `translate(${settings.dims.margin.left}, ${settings.dims.margin.top})`)
+    vis.els.annotation = vis.els.svg.append('g').attr('id', 'annotation-group')
+
+    // e. Set cluster positions
     setClusterPositions()
 
-    // Set scales
+    // f. Set data scales
     vis.scales = {
         timeX:          d3.scaleTime().domain(d3.extent(data.list.yearDates ))
                             .range([settings.dims.margin.left,  settings.dims.width - settings.dims.margin.right * 1.5]),
@@ -686,15 +700,10 @@ async function renderVis(data, settings){
         }
     }
 
-    // Add background
-    // chartArea.append('rect').classed('bg-layer rough-paper', true)
-    //     .attr('width', width)
-    //     .attr('height', height)
 
-
-    /////////////////////////////
-    //// FORCE SIMULATIONS   ////
-    /////////////////////////////
+    //////////////////////////////////////
+    //// 2. SETUP FORCE SIMULATIONS   ////
+    //////////////////////////////////////
 
     // a. Node and lnk data
     vis.data.links = data.chart.byProject.links.map(d => Object.create(d));
@@ -716,8 +725,8 @@ async function renderVis(data, settings){
 
             // 1 .Set new simulation forces
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
-                .force("charge", d3.forceManyBody().strength(d => d.__proto__.type  ? 0 : 0.1))
-                .force("centre", d3.forceCenter(centreline.x, centreline.y).strength(0.1) )
+                .force("charge", null)
+                .force("centre", d3.forceCenter(centreline.x, centreline.y -  settings.geometry.node.centre ).strength(0.05) )
                 .force("collision", d3.forceCollide()
                     .radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
                         :  d.__proto__.type ?  0
@@ -725,13 +734,11 @@ async function renderVis(data, settings){
                     )
                 )
                 .force("x", d3.forceX().x(centreline.x)
-                    .strength( d => d.__proto__.type ? 1 : 0.1)
+                    .strength( d => d.__proto__.type ? 0.5 : 0.1)
                 )
                 .force("y", d3.forceY()
-                    .y(d => d.__proto__.type === 'ls-node' ?  oneQuarter.y 
-                        : d.__proto__.type === 'year-node'  || d.__proto__.type === 'orgType-node'? -oneThird.y : centreline.y
-                    )
-                    .strength( d => d.__proto__.type ? 1 : 1)
+                    .y(d =>  d.__proto__.type ?  oneThird.y  : centreline.y)
+                    .strength( d => d.__proto__.type ? 0.25 : 1)
                 )
                 .force("radial", null)
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(null) )
@@ -960,7 +967,7 @@ async function renderVis(data, settings){
                 .force("x", d3.forceX().x( d => d.__proto__.type ? centreline.x:  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
                     .strength(d => d.type ? 1: 0.45)
                 )
-                .force("y", d3.forceY().y( d => d.__proto__.type ? oneQuarter.y  : twoThird.y)
+                .force("y", d3.forceY().y( d => d.__proto__.type ? oneQuarter.y  : centreline.y)
                     .strength(d => d.type ? 1 : 0.15)
                 )
                 .force("radial", null)
@@ -969,7 +976,7 @@ async function renderVis(data, settings){
             // 2. Fixed node settings for non-project nodes (year labels and central node) and label visibility
             data.list.years.forEach( (year, i) => {
                 vis.data.nodes[i].fx = vis.scales.timeX(new Date(year, 1, 1))
-                vis.data.nodes[i].fy = twoThird.y
+                vis.data.nodes[i].fy = centreline.y
             })
             vis.data.nodes[data.list.years.length].fx = null
             vis.data.nodes[data.list.years.length].fy = null
@@ -1061,7 +1068,7 @@ async function renderVis(data, settings){
                     spiralPathCoords = spiral(points)
 
                 // b. Add full spiral path
-                const spiralGroup = chartArea.append('g').classed('gridline', true)
+                const spiralGroup = vis.els.chartArea.append('g').classed('gridline', true)
                     .attr('transform', `translate(${width * 0.5}, ${height * 0.5})`)        
                     .append('path')
                     .classed('gridline spiral', true)
@@ -1082,7 +1089,7 @@ async function renderVis(data, settings){
                             .angle(theta)
                             .radius(spiralRadius) 
 
-                    const spiralSector = chartArea.append('g').attr('transform', `translate(${width * 0.5}, ${height * 0.5})`) 
+                    const spiralSector = vis.els.chartArea.append('g').attr('transform', `translate(${width * 0.5}, ${height * 0.5})`) 
                             .append('path')
                             .classed('gridline dummy', true)
                             .style('stroke', i === 0 ? 'red' : 'blue').style('stroke-width',  i === 0 ? 5 : 0)
@@ -1181,7 +1188,7 @@ async function renderVis(data, settings){
                 vis.data.nodes[i].fx = centreline.x
                 vis.data.nodes[i].fy = centreline.y + vis.scales.timeRadial(new Date(year, 6, 30))
 
-                chartArea.append('circle')
+                vis.els.chartArea.append('circle')
                     .classed('gridline radial-year', true)
                     .attr('r', vis.scales.timeRadial(new Date(year, 1, 1)))
                     .attr('cx', width * 0.5)
@@ -1210,7 +1217,7 @@ async function renderVis(data, settings){
             vis.state.visibility.lsLabel = true
             vis.state.visibility.clusterSelector = false
             vis.state.layout.nodeScale = 0.8
-            vis.state.layout.lsNodeScale = 1
+            vis.state.layout.lsNodeScale = 0.8
             vis.methods.layout.nodeResize()
 
             // 1. Set scales and value indicator
@@ -1244,10 +1251,10 @@ async function renderVis(data, settings){
                             : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) * 1.5 
                     )
                 )
-                .force("x", d3.forceX().x( d => d.__proto__.type ? centreline.x :  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
+                .force("x", d3.forceX().x( d => d.__proto__.type ? width :  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
                     .strength(d => d.__proto__.type ? 1: 0.5)
                 )
-                .force("y", d3.forceY().y( d =>  d.__proto__.type ? settings.dims.height * 0.175   :  ratingScale(data.schema.projects[d.__proto__.id][ratingName] )  )
+                .force("y", d3.forceY().y( d =>  d.__proto__.type ? settings.dims.margin.top   :  ratingScale(data.schema.projects[d.__proto__.id][ratingName] )  )
                     .strength(d => d.__proto__.type ? 1: 0.5)
                 )
                 .force("radial", null)
@@ -1263,11 +1270,11 @@ async function renderVis(data, settings){
         }
     }
 
-    ///////////////////////////////////
-    ////   RENDER LINKS AND NODES  ////
-    ///////////////////////////////////
+    /////////////////////////////////////
+    ////  3. RENDER LINKS AND NODES  ////
+    /////////////////////////////////////
 
-    // a. Links (as straight lines)
+    // a. Add links paths (as straight lines)
     vis.els.link = vis.els.svg.append("g").classed('link-group', true)
         .selectAll("line")
         .data(vis.data.links)
@@ -1314,12 +1321,12 @@ async function renderVis(data, settings){
                     ? 1 / vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)
                         : vis.scales.valueThickness(data.schema.projects[d.__proto__.id].value_LS) )
                 .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null 
-                        : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
+                    : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
                         : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
-                        : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
+                            : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
                 )
                 .attr('transform', d =>  typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
-                        ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)})`  : null)
+                    ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)})`  : null)
 
             //  IV. Node outline (used for effects)
             if(settings.layout.nodeExtras){
@@ -1388,10 +1395,139 @@ async function renderVis(data, settings){
 
 
     ////////////////////////////
+    ////  ANNOTATIONS ////
+    ////////////////////////////
+    
+    setupAnnotations()
+    addClusterMenu()
+
+
+    function setupAnnotations(){
+        // 1. Add annotation elements
+        vis.els.annotation.classed('narrative annotation-group', true)
+            .attr('transform', `translate(${centreline.x}, ${centreline.y})`)
+        vis.els.annotation.append('text').classed('annotation', true)
+            .attr('x', 0).attr('y', 0).attr('dy', 0)
+
+        // 2. Add annotation settings
+        settings.scene.simOrder = [
+                {   name:       'circle',                
+                    title:      'Little constellations', 
+                    annotation: 'We are and dreaming of places where lovers have wings. And setting controls for the heart of the sun. ',
+                    posX:       centreline.x,
+                    posY:       height + settings.dims.margin.top,
+                    wrapWidth:  width * 0.5,
+                    textAnchor: 'middle'
+                },
+                {   name:       'clusterHuddle',         
+                    title:      'All my friends', // LCD Soundsystem
+                    annotation: `These playful little shapes represent all of the projects done by Little Sketches (so far). Orbs are paid projects sized by value, while completely pro bono jobs are shaped as hearts and sized by a notional value. The beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
+                    posX:       centreline.x,
+                    posY:       threeQuarter.y,
+                    wrapWidth:  width * 0.675,
+                    textAnchor: 'middle'
+                },
+                {   name:       'clusterMultiFoci',      
+                    title:      'Everything in its right place', // Radiohead
+                    annotation: `These clusters show what the colour coding of each project means: they categories the types of clients or audience our work is for. You can tap or hover of a project to learn a bit about a project, and see how they connect to other projects.`,
+                    posX:       centreline.x,
+                    posY:       twoThird.y,
+                    wrapWidth:  width * 0.4,
+                    textAnchor: 'middle'
+                },
+                {   name:       'timelineX',    
+                    title:      'Wave of mutilation', // The Pixies
+                    annotation: 'Seeing when projects were completed is a fun way to see how the types of projects we do has evolved over time. and how may are connected',
+                    posX:       centreline.x,
+                    posY:       threeQuarter.y,
+                    wrapWidth:  width * 0.75,
+                    textAnchor: 'middle'
+                },
+                {   name:       'timelineXY',            
+                    title:      'Inertia creeps',   // Massive Attack
+                    annotation: `Changing the angle here doesn't really reveal anything new, but its fun and quirky. And we like that!`,
+                    posX:       threeQuarter.x,
+                    posY:       threeQuarter.y + oneQuarter.y * 0.5,
+                    wrapWidth:  width * 0.4,
+                    textAnchor: 'middle'
+                },
+                {   name:       'timelineSpiral',      
+                    title:      'Road to nowhere',  // Talikng Heads
+                    annotation: `Well, we know where we're going. But we don't know where we've been. And we know what we're knowing. But we can't say what we've seen. And we're not little children. And we know what we want. And the future is certain. Give us time to work it out`,
+                    posX:       centreline.x,
+                    posY:       settings.dims.margin.top * 0.5,
+                    wrapWidth:  width * 0.75,
+                    textAnchor: 'middle'
+                },
+                {   name:       'constellationRadial',   
+                    title:      'Wandering star',       // Portishead
+                    annotation: `Please could you stay awhile to share my grief. For it's such a lovely day. To have to always feel this way. And the time that I will suffer less. Is when I never have to wake. Wandering stars, for whom it is reserved. The blackness of darkness forever`,
+                    posX:       centreline.x,
+                    posY:       settings.dims.margin.top * 0.5,
+                    wrapWidth:  width * 0.75,
+                    textAnchor: 'middle'
+                },
+                {   name:       'constellationHorizon',  
+                    title:      'The sky lit up',       // PJ Harvey
+                    annotation: `I'm walking in the city tonight. I'm walking in the city at dark. Remembering, remember light Thinking of nothing, and the shooting stars  And this world tonight is mine `,
+                    posX:       settings.dims.margin.left,
+                    posY:       settings.dims.margin.top * 0.5,
+                    wrapWidth:  width * 0.5,
+                    textAnchor: 'start'
+                },
+                {   name:       'clusterFocus',         
+                    title:      'Space oddity',         // David Bowiw
+                    annotation: 'Set controls for the heart of the sun...',
+                    posX:       settings.dims.margin.left,
+                    posY:       settings.dims.margin.top * 0.5,
+                    wrapWidth:  width * 0.35,
+                    textAnchor: 'middle'
+                }
+            ] 
+
+        // 3. Call the initial setup 
+        vis.methods.ui.updateAnnotation()
+    };
+
+
+
+    function addClusterMenu(){
+        const menuGroup = vis.els.svg.append('g').classed('cluster-menu menu-group annotation-group', true)
+                .attr('transform', `translate(${0}, ${settings.dims.margin.top * 0.5})`)
+        menuGroup.append('text')
+            .classed('menu-header', true)
+            .text('Choose a clustering theme:')
+
+        const lineSpacing = 24
+        Object.entries(settings.labels.map).forEach( ([key, label] , i) => {
+            menuGroup.append('text').classed(`menu-item ${key}`, true)
+                .attr('y', 26 + i * lineSpacing)
+                .text(label)      
+                .on('click', function(){
+                    d3.selectAll(`.menu-item`).classed('selected', false)
+                    d3.select(this).classed('selected', true)
+                    vis.state.layout.clusterGroup = key.slice(4)
+                    vis.state.layout.clusterFocus = "Tap here" 
+
+                    vis.methods.ui.updateSimLayout('clusterFocus')
+                })
+        }) 
+
+        // Set selected item and visibility
+        d3.select(`.menu-item.ctg_${vis.state.layout.clusterGroup}`).classed('selected', true)
+        d3.select('.cluster-menu').style('opacity', vis.state.visibility.clusterSelector ? null : 0)
+        d3.selectAll('.cluster-item').style('pointer-events', vis.state.visibility.clusterSelector ? null : 'none')
+    };
+
+
+
+    ////////////////////////////
     ////  VIS INTERACTIONS  ////
     ////////////////////////////
 
-    d3.select('.title').on('click', advanceSim)
+    d3.select('.button-next').on('click', () => changeSim(true))
+    d3.select('.button-prev').on('click', () => changeSim(false))
+
 
     // PROJECT NODES
     function nodeMouseover(event, d){
@@ -1415,7 +1551,6 @@ async function renderVis(data, settings){
 
     // LS NODE
     function lsNodeMouseover(){
-        d3.selectAll('.project-node').classed('no-mix-blend', true).style('opacity', null)
         d3.selectAll('.project-link').style('opacity', null)
     }; // end lsNodeMouseover()
 
@@ -1434,43 +1569,22 @@ async function renderVis(data, settings){
     };
 
 
-    function advanceSim(){
-        const currentIndex = settings.scene.simOrder.indexOf(vis.state.sim.name),
-            nextSim = settings.scene.simOrder[(currentIndex +1) % settings.scene.simOrder.length]
-        vis.methods.ui.updateSimLayout(nextSim)
-    }
+    function changeSim(next = true){
+        const currentIndex = settings.scene.simOrder.map(d => d.name).indexOf(vis.state.sim.name)
+        let nextSimIndex, nextSim
+        switch(next){
+            case true:
+                    nextSimIndex = (currentIndex + 1) % settings.scene.simOrder.length
+                break
+            case false: 
+                    nextSimIndex = currentIndex === 0 ? settings.scene.simOrder.length - 1 : currentIndex - 1
+                break       
+            default:
+        }
 
-    addClusterMenu()
-    function addClusterMenu(){
-        const menuGroup = vis.els.svg.append('g').classed('cluster-menu menu-group annotation-group', true)
-                .attr('transform', `translate(${0}, ${settings.dims.margin.top * 0.5})`)
-        menuGroup.append('text')
-            .classed('menu-header', true)
-            .text('Choose a clustering theme:')
+        vis.methods.ui.updateSimLayout(settings.scene.simOrder[nextSimIndex].name)
+        vis.methods.ui.updateAnnotation()
 
-        const lineSpacing = 24
-
-        Object.entries(settings.labels.map).forEach( ([key, label] , i) => {
-            menuGroup.append('text').classed(`menu-item ${key}`, true)
-                .attr('y', 26 + i * lineSpacing)
-                .text(label)      
-                .on('click', function(){
-                    d3.selectAll(`.menu-item`).classed('selected', false)
-                    d3.select(this).classed('selected', true)
-                    vis.state.layout.clusterGroup = key.slice(4)
-                    vis.state.layout.clusterFocus = "Tap here" 
-
-                    vis.methods.ui.updateSimLayout('clusterFocus')
-                })
-        }) 
-
-        // Setup selected
-        d3.select(`.menu-item.ctg_${vis.state.layout.clusterGroup}`)
-            .classed('selected', true)
-
-        // Set visibility 
-        d3.select('.cluster-menu').transition().duration(500).style('opacity', vis.state.visibility.clusterSelector ? null : 0)
-        d3.selectAll('.cluster-item').style('pointer-events', vis.state.visibility.clusterSelector ? null : 'none')
     };
 
 
