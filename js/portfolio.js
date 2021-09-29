@@ -49,11 +49,11 @@
         },
         labels:{
             map: {
-                ctg_domains:        "Domain knowledge",
-                ctg_tech:           "Tools and technologies",
-                ctg_skills:         "Capabilities",
-                ctg_roles:          "Roles",
-                ctg_themes:         "Little threads",
+                ctg_themes:         "> Little threads",
+                ctg_domains:        "> Domain knowledge",
+                ctg_tech:           "> Tools and technologies",
+                ctg_skills:         "> Capabilities",
+                ctg_roles:          "> Roles",
             }
         },
         scene: {}
@@ -96,9 +96,9 @@
             layout: {
                 nodeScale:      1,
                 lsNodeScale:    1,
-                ratingName:     'fame',
+                ratingName:     'average',
                 clusterType:    'orgType',
-                clusterGroup:   'domains',
+                clusterGroup:   'themes',
                 clusterFocus:   'Tap here',
             },
             sim: {
@@ -1413,7 +1413,7 @@ async function renderVis(data, settings){
         settings.scene.simOrder = [
                 {   name:       'circle',                
                     title:      'Little constellations', 
-                    annotation: 'We are and dreaming of places where lovers have wings. And setting controls for the heart of the sun. ',
+                    annotation: 'We are and dreaming of places where lovers have wings. And setting controls for the heart of the sun. Welcome to our project explorer.',
                     posX:       centreline.x,
                     posY:       height + settings.dims.margin.top,
                     wrapWidth:  width * 0.5,
@@ -1421,7 +1421,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'clusterHuddle',         
                     title:      'All my friends', // LCD Soundsystem
-                    annotation: `These playful little shapes represent all of the projects done by Little Sketches (so far). Orbs are paid projects sized by value, while completely pro bono jobs are shaped as hearts and sized by a notional value. The beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
+                    annotation: `These playful little shapes represent all of the projects done by Little Sketches (so far). All the orbs are paid projects sized by value, while pro bono jobs are hearts sized by a notional value. And the beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
                     posX:       centreline.x,
                     posY:       threeQuarter.y,
                     wrapWidth:  width * 0.675,
@@ -1429,7 +1429,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'clusterMultiFoci',      
                     title:      'Everything in its right place', // Radiohead
-                    annotation: `These clusters show what the colour coding of each project means: they categories the types of clients or audience our work is for. You can tap or hover of a project to learn a bit about a project, and see how they connect to other projects.`,
+                    annotation: `These clusters show what the colour coding of each project means: they group projects by the type of clients or audience each piece is for. You can tap or hover over a project to learn a little bit about it, and to see how it might be connected to other projects.`,
                     posX:       centreline.x,
                     posY:       twoThird.y,
                     wrapWidth:  width * 0.4,
@@ -1437,7 +1437,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'timelineX',    
                     title:      'Wave of mutilation', // The Pixies
-                    annotation: 'Seeing when projects were completed is a fun way to see how the types of projects we do has evolved over time. and how may are connected',
+                    annotation: `Seeing when work was completed is a useful way to see how the shape and size of projects we do has evolved over time. It's also a a great way to illustrate a project's lineage.`,
                     posX:       centreline.x,
                     posY:       threeQuarter.y,
                     wrapWidth:  width * 0.75,
@@ -1445,7 +1445,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'timelineXY',            
                     title:      'Inertia creeps',   // Massive Attack
-                    annotation: `Changing the angle here doesn't really reveal anything new, but its fun and quirky. And we like that!`,
+                    annotation: `Changing the angle of a timeline here doesn't really reveal anything new.But this is shaped a little like the Milky Way and bit fun and quirky. And we really like that!`,
                     posX:       threeQuarter.x,
                     posY:       threeQuarter.y + oneQuarter.y * 0.5,
                     wrapWidth:  width * 0.4,
@@ -1453,7 +1453,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'timelineSpiral',      
                     title:      'Road to nowhere',  // Talikng Heads
-                    annotation: `Well, we know where we're going. But we don't know where we've been. And we know what we're knowing. But we can't say what we've seen. And we're not little children. And we know what we want. And the future is certain. Give us time to work it out`,
+                    annotation: `Putting all our work on a spiralling timeline is delightfully fascinating way to explore the patterns of project work...`,
                     posX:       centreline.x,
                     posY:       settings.dims.margin.top * 0.5,
                     wrapWidth:  width * 0.75,
@@ -1461,7 +1461,7 @@ async function renderVis(data, settings){
                 },
                 {   name:       'constellationRadial',   
                     title:      'Wandering star',       // Portishead
-                    annotation: `Please could you stay awhile to share my grief. For it's such a lovely day. To have to always feel this way. And the time that I will suffer less. Is when I never have to wake. Wandering stars, for whom it is reserved. The blackness of darkness forever`,
+                    annotation: `Letting our projects wander within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
                     posX:       centreline.x,
                     posY:       settings.dims.margin.top * 0.5,
                     wrapWidth:  width * 0.75,
@@ -1469,19 +1469,19 @@ async function renderVis(data, settings){
                 },
                 {   name:       'constellationHorizon',  
                     title:      'The sky lit up',       // PJ Harvey
-                    annotation: `I'm walking in the city tonight. I'm walking in the city at dark. Remembering, remember light Thinking of nothing, and the shooting stars  And this world tonight is mine `,
+                    annotation: `Stuff like project timing, value and type are all kinda interesting, and d kinda boring at the same time. In this view we've added some other project criteria and come up and new way to see what floats to the heavens.`,
                     posX:       settings.dims.margin.left,
                     posY:       settings.dims.margin.top * 0.5,
                     wrapWidth:  width * 0.5,
                     textAnchor: 'start'
                 },
                 {   name:       'clusterFocus',         
-                    title:      'Space oddity',         // David Bowiw
-                    annotation: 'Set controls for the heart of the sun...',
+                    title:      'Space oddity',         // David Bowie
+                    annotation: '',
                     posX:       settings.dims.margin.left,
                     posY:       settings.dims.margin.top * 0.5,
                     wrapWidth:  width * 0.35,
-                    textAnchor: 'middle'
+                    textAnchor: 'start'
                 }
             ] 
 
@@ -1496,7 +1496,7 @@ async function renderVis(data, settings){
                 .attr('transform', `translate(${0}, ${settings.dims.margin.top * 0.5})`)
         menuGroup.append('text')
             .classed('menu-header', true)
-            .text('Choose a clustering theme:')
+            .text('Explore by theme:')
 
         const lineSpacing = 24
         Object.entries(settings.labels.map).forEach( ([key, label] , i) => {
@@ -1590,9 +1590,11 @@ async function renderVis(data, settings){
 
     // Key press views
     document.addEventListener("keypress",  async (event) =>{ 
-        // console.log(event.keyCode)
+        console.log(event.keyCode)
         switch(event.keyCode){
-
+            case 32:  // Space
+                d3.selectAll('.project-link').transition().duration(800).style('opacity', null)
+                break
             case 48:  // 0
                 vis.methods.ui.updateSimLayout('circle')
                 break
