@@ -36,7 +36,8 @@
         layout: {
             nodeExtras:         false,
             type:               'byProjects',
-            centralLinks:       'root-only'
+            centralLinks:       'root-only',
+            roundValue:         true
         },
         clusters: {
             orgType: {},
@@ -49,11 +50,11 @@
         },
         labels:{
             map: {
-                ctg_themes:         "> Little threads",
-                ctg_domains:        "> Domain knowledge",
+                ctg_themes:         "> Little big themes",
                 ctg_tech:           "> Tools and technologies",
                 ctg_skills:         "> Capabilities",
-                ctg_roles:          "> Roles",
+                ctg_domains:        "> Domains",
+                // ctg_roles:          "> Roles",
             }
         },
         scene: {}
@@ -137,7 +138,6 @@
                 },
 
                 updateSimLayout: (name) => {
-                    console.log('Running sim layout for  > '+name)
                     // 0. Clear non-network elements  and resize nodes 
                     d3.selectAll('.gridline').remove()   
                    
@@ -159,6 +159,7 @@
                     d3.select('.cluster-menu').transition().duration(500).style('opacity', vis.state.visibility.clusterSelector ? null : 0)
                     d3.selectAll('.cluster-item').style('pointer-events', vis.state.visibility.clusterSelector ? null : 'none'),
                     vis.els.lsNode.on('click', name === 'clusterFocus' ? vis.methods.ui.lsNodeClick : null)
+                    d3.selectAll('.project-node').on('click', name === 'radialMoon' ? vis.methods.ui.projectNodeClick : null)
 
                     vis.methods.layout.nodeResize()
 
@@ -179,6 +180,23 @@
                     function onEnd(){
                     };
                 }, // end updateSimLayout()
+
+                changeSim: (next = true) => {
+                    const currentIndex = settings.scene.simOrder.map(d => d.name).indexOf(vis.state.sim.name)
+                    let nextSimIndex, nextSim
+                    switch(next){
+                        case true:
+                                nextSimIndex = (currentIndex + 1) % settings.scene.simOrder.length
+                            break
+                        case false: 
+                                nextSimIndex = currentIndex === 0 ? settings.scene.simOrder.length - 1 : currentIndex - 1
+                            break       
+                        default:
+                    }
+
+                    vis.methods.ui.updateSimLayout(settings.scene.simOrder[nextSimIndex].name)
+                    vis.methods.ui.updateAnnotation()
+                }, // end changeSim()
 
                 updateAnnotation: (simName = vis.state.sim.name) => {
                     const data = settings.scene.simOrder.filter(d => d.name === vis.state.sim.name)[0]
@@ -205,17 +223,18 @@
                 }, // end updateAnnotation
 
                 highlightNetwork: (nodeID) =>{
-                    let  projectData = data.schema.projects[nodeID]
+                    let  projectData = data.schema.projects[nodeID],
+                        masterNodeID = nodeID
                     // a. Traverse up the parents to the 'master'
                     if(projectData.network_parents.length > 0){
                         do {
-                            nodeID = projectData.network_parents[0]
-                            projectData = data.schema.projects[nodeID]         
+                            masterNodeID = projectData.network_parents[0]
+                            projectData = data.schema.projects[masterNodeID]         
                         } while( projectData.network_parents.length > 0)
                     }
 
                     // b. Traverse from 'master' parent down through all children
-                    const childID_array =  [nodeID].concat(projectData.network_children)            
+                    const childID_array =  [masterNodeID].concat(projectData.network_children)            
                     for(id of childID_array){
                         projectData = data.schema.projects[id]
                         if(projectData.network_children.length > 0){
@@ -227,15 +246,15 @@
                     }
                     // c. Style the connected network
                     const networkClassString = [...new Set(childID_array)].map(d => `.${d}`).toString()
-                    d3.selectAll(networkClassString).style('opacity', null)
+                    d3.selectAll(`${networkClassString}:not(.${nodeID})`).style('opacity', null).classed('mute', true)
+                    d3.selectAll(`.${nodeID}`).classed('mute', false)
                     d3.selectAll(`.project-group:not(${networkClassString})`).style('opacity', 0.1)
-                    d3.selectAll(`.project-link:not(${networkClassString})`).style('opacity', 0)
                     d3.selectAll(`.project-link:not(${networkClassString})`).style('opacity', 0)
                 },  // end highlightNetwork()
 
                 showTooltip: (thisNode, d) => {
                     const tooltip = d3.select("#tooltip"), 
-                        nodeBbox = thisNode.getBoundingClientRect(),
+                        nodeBBox = thisNode.getBoundingClientRect(),
                         projectID = d.__proto__.id,
                         projectData = data.schema.projects[projectID],
                         projectShortDesc = projectData.activeName ? `${projectData.activeName}.`: '', 
@@ -243,10 +262,15 @@
                         nodeRadius = vis.scales.valueRadius(projectData.value_LS),
                         dates = projectData.workObjects,
                         fees = projectData.value_LS,
+                        estDeliveryMonths = fees / 15000,
                         lsProjectSize = fees < 5000 ? ' little' : fees < 10000 ? ' small' : '',
                         partnerFees =  d3.sum(projectData.value_partners),
-                        projectValue = fees + partnerFees
+                        projectValue = fees + partnerFees,
+                        projectAdjStem = projectData.project_adjective ?  ['a', 'e', 'i', 'o', 'u'].indexOf(projectData.project_adjective.slice(0,1).toLowerCase()) > -1 ? `An ${projectData.project_adjective}` :  `A ${projectData.project_adjective}` : 'A',
+                        projectTypeStem = projectData.project_type === 'residency' ? `${projectData.project_type} undertaken` : projectData.project_type === 'lab' ? `${projectData.project_type} project brought to life` : `${projectData.project_type} project delivered` 
+                    
 
+                    // A. Tooltip info 
                     let feeSizeDescription
                     for(let i = 0; i < vis.scales.bins.fees.length; i++){ 
                         if(fees < vis.scales.bins.fees[i].x1){
@@ -256,18 +280,18 @@
                         }
                     }
 
-                    let dateString = `A${lsProjectSize} project `
+                    let dateString = `${projectAdjStem} ${projectTypeStem} `
                     if(dates.length === 1){
-                        dateString += `delivered circa ${d3.timeFormat('%B %Y')(dates[0].date)}`
+                        dateString += `around ${d3.timeFormat('%B %Y')(dates[0].date)}`
                     } else{
                         const fromDate = dates[0].date, fromYear = fromDate.getFullYear(), fromMonth = fromDate.getMonth(),
                             toDate = dates[dates.length - 1].date, toYear = toDate.getFullYear(), toMonth = toDate.getMonth()
                         if(fromYear === toYear && fromMonth === toMonth){
-                            dateString += `delivered circa ${d3.timeFormat('%B %Y')(dates[0].date)}`
+                            dateString += `around ${d3.timeFormat('%B %Y')(dates[0].date)}`
                         } else if (fromYear === toYear){
-                            dateString += ` delivered circa ${d3.timeFormat('%B ')(dates[0].date)} to ${d3.timeFormat('%b %Y')(dates[dates.length - 1].date)}`
+                            dateString += `around ${d3.timeFormat('%b ')(dates[0].date)} to ${d3.timeFormat('%b %Y')(dates[dates.length - 1].date)}`
                         } else {
-                            dateString += ` delivered circa ${d3.timeFormat('%B %Y')(dates[0].date)} to ${d3.timeFormat('%b %Y')(dates[dates.length - 1].date)}`
+                            dateString += `around ${d3.timeFormat('%b %Y')(dates[0].date)} to ${d3.timeFormat('%b %Y')(dates[dates.length - 1].date)}`
                         }
                     }
 
@@ -286,24 +310,24 @@
                     document.getElementById('tooltip-header').innerHTML = projectData.name 
                     document.getElementById('tooltip-description').innerHTML = `${projectShortDesc} ${dateString}${deliveryOrgString}`
 
-                    // Test for edges and position node
+                    // B. Tooltip positioning and visisibitty 
                     const toolTipWidth    = tooltip.node().offsetWidth,
                         toolTipHeight   = tooltip.node().offsetHeight
 
-                    let toolTipTop      = nodeBbox.y - toolTipHeight - 5,
-                        toolTipLeft     = nodeBbox.x + nodeBbox.width * 0.5 - tooltip.node().offsetWidth * 0.5,
-                        toolTipRight    = nodeBbox.x + nodeBbox.width * 0.5 + tooltip.node().offsetWidth * 0.5
+                    let toolTipTop      = nodeBBox.y - toolTipHeight - 5,
+                        toolTipLeft     = nodeBBox.x + nodeBBox.width * 0.5 - tooltip.node().offsetWidth * 0.5,
+                        toolTipRight    = nodeBBox.x + nodeBBox.width * 0.5 + tooltip.node().offsetWidth * 0.5
 
-                    if(nodeBbox.y - toolTipHeight < 0){
-                        toolTipTop = nodeBbox.y + nodeBbox.height + 5
+                    if(nodeBBox.y - toolTipHeight < 0){
+                        toolTipTop = nodeBBox.y + nodeBBox.height + 5
                     }
                     if(toolTipLeft < 0){ 
-                        toolTipTop  = nodeBbox.y + nodeBbox.height * 0.5 - toolTipHeight * 0.5
-                        toolTipLeft = nodeBbox.x + nodeBbox.width + 5
+                        toolTipTop  = nodeBBox.y + nodeBBox.height * 0.5 - toolTipHeight * 0.5
+                        toolTipLeft = nodeBBox.x + nodeBBox.width + 5
                     }
                     if(window.innerWidth - toolTipRight < 0){
-                        toolTipTop  = nodeBbox.y + nodeBbox.height * 0.5 - toolTipHeight * 0.5
-                        toolTipLeft = nodeBbox.x  - 5 - toolTipWidth 
+                        toolTipTop  = nodeBBox.y + nodeBBox.height * 0.5 - toolTipHeight * 0.5
+                        toolTipLeft = nodeBBox.x  - 5 - toolTipWidth 
                     }
 
                     tooltip.classed(helpers.slugify(clientData.type), true)
@@ -311,6 +335,10 @@
                         .style('left', `${toolTipLeft}px`)
                         .style('top', `${toolTipTop}px`)
                 }, // end showTipTool()
+
+                lsNodeMouseover: () => {
+                    d3.selectAll('.project-link').style('opacity', null)
+                }, // end lsNodeMouseover()
 
                 lsNodeClick: () =>{
                     // Update cluster focus
@@ -324,7 +352,173 @@
                         vis.methods.ui.updateSimLayout('clusterFocus')
                         vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][(index +1) % data.list.project[vis.state.layout.clusterGroup].length]
                     }
-                }
+                }, // lsNodeClick
+
+                nodeMouseover: function(event, d){
+                    // 1. Tooltip for project nodes
+                    if(typeof d.__proto__.id !== 'undefined') vis.methods.ui.showTooltip(this, d) 
+                    // 2. Highlight the connected network
+                    const selectedNodeData = this.__data__.__proto__,
+                        nodeID = selectedNodeData.id
+
+                    vis.methods.ui.highlightNetwork(nodeID)
+                }, // end nodeMouseover()
+
+                nodeMouseout: () => {
+                    d3.select("#tooltip").style('opacity' , 0).attr('class', 'tooltip')
+                    d3.selectAll('.project-node').style('opacity', null).classed('mute', false).classed('highlight', false)
+                    d3.selectAll('.project-group').style('opacity', null)
+                    d3.selectAll('.project-link').style('opacity', vis.state.visibility.links ? null : 0)
+                }, // // end nodeMouseout()
+
+                updateProjectModal: (nodeID) => {
+                    const infoContainer = d3.select('.project-info-container'),
+                        imagesContainer =    d3.select('.project-images-group'),  
+                        projectData = data.schema.projects[nodeID],
+                        clientData = data.schema.orgs[projectData.client],
+                        dates = projectData.workObjects,
+                        fees = projectData.value_LS,
+                        lsProjectSize = fees < 5000 ? ' little' : fees < 10000 ? ' small' : '',
+                        partnerFees =  d3.sum(projectData.value_partners),
+                        projectValue = fees + partnerFees
+
+                    console.log(projectData)
+                    console.log('Fee:', fees, partnerFees, 'Total fee:', projectValue)
+                    console.log( clientData)
+
+                    // 1. Title and subtitle
+                    d3.select('.project-title').html(projectData.name)
+                    d3.select('.project-subtitle').html(projectData.activeName)
+                    if(projectData.description){
+                        d3.select('.project-description-container').html(`
+                                <div class="project-details-label about">About</div>
+                                ${projectData.description}
+                        `)
+                    }
+                    // 2a. Clear the project container 
+                     d3.selectAll('.project-info-container *').remove()   
+
+                    // 2b. Client   
+                    let clientName = clientData.noun_name === "TRUE" ? `The ${projectData.client}` : projectData.client
+                    if(clientData.short_name !== "") clientName += ` (${clientData.short_name})`
+                    if(clientData.current_name !== "") clientName += `, now ${clientData.current_name}`
+                    if(clientData.current_short_name !== "") clientName += ` (${clientData.current_short_name})`
+                    if(clientData.current_URL !== "") clientName = `<a href = ${clientData.current_URL} target="_blank"> ${clientName}</a>`
+
+                    if(projectData.project_type !== 'lab'){
+                        infoContainer.append('div').html(`<span class = "project-details-label">Client:</span> ${clientName}`)
+                        infoContainer.append('div').html(`<span class = "project-details-label">Location:</span> ${clientData.location_city}, ${clientData.location_country}</a>`)
+                    }
+
+                    // 2c. Project website link
+                    if(projectData.project_url !== ''){
+                        infoContainer.append('div').html(`<span class = "project-details-label">Project website:</span> <a href = ${projectData.project_url} target="_blank">${projectData.project_url}</a> `)
+                    }
+
+                    // 2d. Project value
+                    let displayValue = d3.format("$,.0f")(projectValue)
+                    if(settings.layout.roundValue){
+                        if(projectValue <= 10000){  displayValue = `Under $10,000`}
+                        if(projectValue <= 25000){  displayValue = `$10,000 to $25,000`}
+                        if(projectValue < 50000){   displayValue = `$25,000 to $50,000`}
+                        if(projectValue <= 100000){ displayValue = `$50,000 to $100,000`}
+                        if(projectValue > 100000){ displayValue = `Over $100,000`}
+                    }
+
+                    if(projectData.project_type !== 'lab' && projectData.project_type !== 'pro bono'){
+                        infoContainer.append('div').html(`<span class = "project-details-label">Project size:</span> ${displayValue}`)
+                    }
+
+                    // 2e. Project delivery (type and date) string
+                    const  projectTypeStem = projectData.project_type === 'A residency' ? `${projectData.project_type} undertaken` : projectData.project_type === 'lab' ? `A ${projectData.project_type} project brought to life` : `A ${projectData.project_type} project delivered` 
+
+                    let dateString = `${projectTypeStem} `
+                    if(dates.length === 1){
+                        dateString += `around ${d3.timeFormat('%B %Y')(dates[0].date)}`
+                    } else{
+                        const fromDate = dates[0].date, fromYear = fromDate.getFullYear(), fromMonth = fromDate.getMonth(),
+                            toDate = dates[dates.length - 1].date, toYear = toDate.getFullYear(), toMonth = toDate.getMonth()
+                        if(fromYear === toYear && fromMonth === toMonth){
+                            dateString += `around ${d3.timeFormat('%B %Y')(dates[0].date)}`
+                        } else if (fromYear === toYear){
+                            dateString += `around ${d3.timeFormat('%b ')(dates[0].date)} to ${d3.timeFormat('%b %Y')(dates[dates.length - 1].date)}`
+                        } else {
+                            dateString += `around ${d3.timeFormat('%b %Y')(dates[0].date)} to ${d3.timeFormat('%b %Y')(dates[dates.length - 1].date)}`
+                        }
+                    }
+                    let deliveryOrgString = ''
+                    if(projectData.org_lead !== 'Little Sketches'){
+                        let lead = [`${projectData.org_lead} (lead)`],
+                            partnersExLead = projectData.org_partners.filter(d => d !== projectData.org_lead),
+                            partnerArray = lead.concat(partnersExLead),
+                            partnerStrings = partnerArray.map((d, i) => i=== 0 ? d : i === partnerArray.length - 1 ? ` and ${d}` : `, ${d}`)
+                        deliveryOrgString = `, with ${partnerStrings.join('')}`
+                    } else {
+                        deliveryOrgString = '.'
+                    }
+
+                    infoContainer.append('div').html(`<span class = "project-details-label">Delivery:</span> ${dateString}${deliveryOrgString} `)
+
+                    /// 3. Project images
+                    d3.selectAll('li.project-img-container').remove()
+console.log(projectData.project_img_array)
+                    projectData.project_img_array.forEach((imgName, i) =>{
+console.log('Adding: '+imgName)
+                        imagesContainer.append('li').classed('project-img-container grid__item', true)
+                            .append('img').attr('src', `./img/projects/png/${imgName}.png`)
+                    })
+                }, // end updateProjectModal
+
+                projectNodeClick: function(event, d){
+                    const dimToSpan = d3.max([window.innerWidth,  window.innerHeight]),
+                        nodeBBox = this.getBBox(),
+                        nodeMinDim = d3.min([nodeBBox.width, nodeBBox.height]),
+                        scaleRequired = dimToSpan / nodeMinDim,
+                        nodeID = d.__proto__.id,
+                        projectData = data.schema.projects[nodeID]
+                        scaleMultiplier = 3.5 + (projectData.project_type === 'lab' ? 3 : 0) + (projectData.project_type === 'pro bono' ? 0.5 : 0)
+
+                    vis.methods.ui.updateProjectModal(nodeID)
+
+                    d3.selectAll(`.project-node`).style('pointer-events', 'none')
+                    d3.selectAll(`.project-node:not(.${nodeID}), .project-value-bg, .node-bg, .project-node-outline, .title-container`)
+                        .transition().duration(250)
+                        .style('opacity', 0)
+                    d3.select(this).transition().duration(1500).delay(250)
+                        .style('transform', `scale(${scaleRequired * scaleMultiplier})`)
+                    d3.select('#project-details-container').classed('hidden', false)
+                        .style('opacity', 0)
+                        .transition().duration(1500).delay(250)
+                            .style('opacity', null)
+                    d3.select('.project-close-button').on('click', vis.methods.ui.projectNodeExit)
+                    setTimeout(() => {
+                        d3.select('.title-container').style('display', 'none')  
+                    }, 250);
+                }, // end projectNodeClick
+
+                projectNodeExit: function(event, d){
+                    d3.selectAll(`.project-node`).transition().duration(1500)
+                        .style('transform', null)
+                    d3.select('#project-details-container')
+                        .transition().duration(250)
+                        .style('opacity', 0)
+                    setTimeout(() => {
+                        d3.select('#project-details-container').classed('hidden', true)
+                    }, 250);
+
+                    setTimeout(() => {
+                        d3.selectAll(`.project-node, .project-value-bg, .node-bg, .project-node-outline`)
+                            .transition().duration(250)
+                            .style('opacity', null)
+                        d3.select('.title-container').style('display', null)
+                            .transition().duration(250)
+                            .style('opacity', null)
+                        setTimeout(() => {
+                            d3.selectAll(`.project-node`).style('pointer-events', null)
+                            vis.els.svg.on('click', null)
+                        }, 250);
+                    }, 1500);
+                }, // end projectNodeExit
 
             },
 
@@ -457,7 +651,7 @@ async function transformData(){
         for(key of Object.keys(projObj).filter(d => d.slice(0,9).toLocaleLowerCase() === 'partners_')){
             if(projObj[key] !== '')   partners.push(projObj[key])
         }
-
+console.log(projObj)
         // b. Create parents array
         const parentIds = []
         if(projObj.link_direct      !== ""){ parentIds.push(projObj.link_direct) }
@@ -487,8 +681,10 @@ async function transformData(){
             ctg_themes:         projObj.ctg_themes !== '' ? JSON.parse(projObj.ctg_themes) : [],
             ctg_domains:        projObj.ctg_domains !== '' ? JSON.parse(projObj.ctg_domains) : [],
 
-            project_type:       projObj.ctg_type !== '' ? projObj.project_type : null,
+            project_type:       projObj.project_type !== '' ? projObj.project_type : null,
+            project_adjective:  projObj.ctg_type !== '' ? projObj.project_adjective : null,
             project_url:        projObj.project_URL !== '' ? projObj.project_URL : null,
+            project_img_array:  projObj.img_array !== '' ? JSON.parse(projObj.img_array) : [],
             workObjects:        data.table.timeline.filter(d => d.project_id === projObj.id),
 
             network_parents:    parentIds,
@@ -547,7 +743,7 @@ async function transformData(){
     // a. Create root links
     switch(settings.layout.type){
         case 'byProjects':
-            // Node array concatenated for centreline (LS) year markers and projects
+            // Node array concatenated for centerline (LS) year markers and projects
             const lsNode = [{id: "ls_000",  name: "Little Sketches", type: 'ls-node' }] 
             const yearNodes = data.list.years.map(year => { 
                 return {
@@ -572,10 +768,10 @@ async function transformData(){
                 .concat(data.table.projects)
 
             // Link array 
-            // a. Make a connection to the centreline node
+            // a. Make a connection to the centerline node
             switch(settings.layout.centralLinks){
                 case 'all':
-                    // a. Make a connection to the centreline node
+                    // a. Make a connection to the centerline node
                     centralLinks = data.table.projects.map(obj => {
                         return {
                             source:     data.chart.byProject.nodes[0].id,
@@ -642,12 +838,12 @@ async function renderVis(data, settings){
 
     // a. Set SVG dimensions and canvas size-specfic layout dimensions
     vis.els.svg = d3.select(`#${settings.svgID}`)
-        .classed('centre-svg', true)
+        .classed('center-svg', true)
         .attr('viewBox',  `0 0 ${settings.dims.width} ${settings.dims.height} `)
 
     const width         = settings.dims.width - settings.dims.margin.left - settings.dims.margin.right,
         height          = settings.dims.height - settings.dims.margin.top - settings.dims.margin.bottom,
-        centreline      = {x: width * 0.5 + settings.dims.margin.left, y: height * 0.5 + settings.dims.margin.top },
+        centerline      = {x: width * 0.5 + settings.dims.margin.left, y: height * 0.5 + settings.dims.margin.top },
         oneQuarter      = {x: width * 0.25 + settings.dims.margin.left, y: height * 0.25 + settings.dims.margin.top },
         oneThird        = {x: width * 0.3333 + settings.dims.margin.left, y: height * 0.3333 + settings.dims.margin.top },
         twoThird        = {x: width * 0.6667 + settings.dims.margin.left, y: height * 0.6667 + settings.dims.margin.top },
@@ -656,7 +852,7 @@ async function renderVis(data, settings){
     settings.geometry.node = {
         min:             settings.dims.width / 1080 , 
         max:             settings.dims.width / 1080 * 50, 
-        centre:          settings.dims.width / 1080 * 100,
+        center:          settings.dims.width / 1080 * 100,
         cluster:         settings.dims.width / 1080 * 60,
         centralCluster:  settings.dims.width / 1080 * 130
     }
@@ -678,7 +874,7 @@ async function renderVis(data, settings){
         timeX:          d3.scaleTime().domain(d3.extent(data.list.yearDates ))
                             .range([settings.dims.margin.left,  settings.dims.width - settings.dims.margin.right * 1.5]),
         timeY:          d3.scaleTime().domain(d3.extent(data.list.yearDates))
-                            .range([centreline.y + height * 0.45,  centreline.y - height * 0.3 ]),
+                            .range([centerline.y + height * 0.45,  centerline.y - height * 0.3 ]),
         timeRadial:     d3.scaleLinear().domain(d3.extent(data.list.dates))
                             .range([width * 0.15, width * 0.45]),
 
@@ -708,7 +904,7 @@ async function renderVis(data, settings){
         valueCharge:    d3.scaleSqrt().domain(d3.extent(data.list.projectValues_LS))
                             .range([10, 100]),
         timeRadius:     d3.scaleLinear().domain(d3.extent(data.list.dates))
-                            .range([settings.geometry.node.centre * 2, width * 0.45]),
+                            .range([settings.geometry.node.center * 2, width * 0.45]),
 
         feeSize:        d3.scaleOrdinal().domain([0, 1, 2, 3, 4, 5])
                             .range(settings.scales.feeSize.range),
@@ -749,18 +945,18 @@ async function renderVis(data, settings){
             // 1 .Set new simulation forces
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
                 .force("charge", null)
-                .force("centre", d3.forceCenter(centreline.x, centreline.y -  settings.geometry.node.centre ).strength(0.05) )
+                .force("center", d3.forceCenter(centerline.x, centerline.y -  settings.geometry.node.center ).strength(0.05) )
                 .force("collision", d3.forceCollide()
-                    .radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                    .radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                         :  d.__proto__.type ?  0
                             : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS)  + (settings.dims.width / 1080 * 2.5)
                     )
                 )
-                .force("x", d3.forceX().x(centreline.x)
+                .force("x", d3.forceX().x(centerline.x)
                     .strength( d => d.__proto__.type ? 0.5 : 0.1)
                 )
                 .force("y", d3.forceY()
-                    .y(d =>  d.__proto__.type ?  oneThird.y  : centreline.y)
+                    .y(d =>  d.__proto__.type ?  oneThird.y  : centerline.y)
                     .strength( d => d.__proto__.type ? 0.25 : 1)
                 )
                 .force("radial", null)
@@ -768,7 +964,7 @@ async function renderVis(data, settings){
 
             // 2. Fixed node settings for non-project nodes (year labels and central node)
             data.list.years.forEach( (year, i) => {
-                vis.data.nodes[i].fx = centreline.x
+                vis.data.nodes[i].fx = centerline.x
                 vis.data.nodes[i].fy = oneQuarter.y
             })
             vis.data.nodes[data.list.years.length].fx = null
@@ -794,9 +990,9 @@ async function renderVis(data, settings){
             // 2 .Set new simulation forces
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
                 .force("charge", d3.forceManyBody().strength(d => d.__proto__.type  ? 0 : -0.3))
-                .force("centre", null )
+                .force("center", null )
                 .force("collision", d3.forceCollide()
-                    .radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                    .radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                         :  d.__proto__.type === 'year-node' || d.__proto__.type === 'inner-cluster-node' || d.__proto__.type === 'outer-cluster-node' ? 0
                             : d.__proto__.type === 'orgType-node' ? settings.geometry.node.cluster * 0.8
                                 : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS)  * (settings.dims.width / 1080 * 1.25)
@@ -809,7 +1005,7 @@ async function renderVis(data, settings){
                             clusterName =   data.schema.orgs[d.__proto__.client].type
                             clusterIDX =  clusterNames.indexOf(clusterName)
                         }
-                        return d.__proto__.type ? centreline.x  : clusterPos[clusterIDX].x
+                        return d.__proto__.type ? centerline.x  : clusterPos[clusterIDX].x
                     })
                     .strength( d => d.__proto__.type ? 1 : 0.1)
                 )
@@ -820,22 +1016,22 @@ async function renderVis(data, settings){
                             clusterName = data.schema.orgs[d.__proto__.client].type
                             clusterIDX =  clusterNames.indexOf(clusterName)
                         }
-                        return d.__proto__.type ? centreline.y  : clusterPos[clusterIDX].y
+                        return d.__proto__.type ? centerline.y  : clusterPos[clusterIDX].y
                     })
                     .strength( d => d.__proto__.type ? 1 : 0.1)
                 )
                 .force("radial", null)
                 .force("radial", d3.forceRadial()
                     .radius(d =>  d.__proto__.type ? 0 : settings.dims.width * 0.375 )
-                    .x(centreline.x)
-                    .y(centreline.y)
+                    .x(centerline.x)
+                    .y(centerline.y)
                     .strength(0.005)
                 )
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(null) )
 
             // 2. Fixed node settings for non-project nodes (year labels and central node)
             data.list.years.forEach( (year, i) => {
-                vis.data.nodes[i].fx = centreline.x
+                vis.data.nodes[i].fx = centerline.x
                 vis.data.nodes[i].fy = oneQuarter.y
             })
             vis.data.nodes[data.list.years.length].fx = null
@@ -888,7 +1084,7 @@ async function renderVis(data, settings){
             // 2.Set new simulation forces
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
                 .force("charge", d3.forceManyBody().strength(d => d.__proto__.type  ? 0 : -500))
-                .force("centre", d3.forceCenter(centreline.x, centreline.y).strength(0.1) )
+                .force("center", d3.forceCenter(centerline.x, centerline.y).strength(0.1) )
                 .force("collision", d3.forceCollide()
                     .radius( d => d.__proto__.type === 'cluster-inner' ?  settings.geometry.node.centralCluster
                         :  d.__proto__.type ?  0
@@ -896,11 +1092,11 @@ async function renderVis(data, settings){
                     )
                 )
                 .force("x", d3.forceX()
-                    .x( d =>  d.__proto__.type === 'ls-node' ? centreline.x : null )
+                    .x( d =>  d.__proto__.type === 'ls-node' ? centerline.x : null )
                     .strength(d =>  d.__proto__.type === 'ls-node' ? 1: null)
                 )
                 .force("y", d3.forceY()
-                    .y( d => d.__proto__.type === 'ls-node' ? centreline.y + 20: null)
+                    .y( d => d.__proto__.type === 'ls-node' ? centerline.y + 20: null)
                     .strength(d => d.__proto__.type === 'ls-node' ? 1: null)
                 )
                 .force("radial", d3.forceRadial()
@@ -908,8 +1104,8 @@ async function renderVis(data, settings){
                         (data.schema.projects[d.__proto__.id][searchKey].indexOf(clusterName) > -1) ? settings.geometry.node.centralCluster 
                         : settings.dims.width * 0.4 
                     )
-                    .x(centreline.x)
-                    .y(centreline.y)
+                    .x(centerline.x)
+                    .y(centerline.y)
                     .strength(1)
                 )
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(null) )
@@ -917,15 +1113,15 @@ async function renderVis(data, settings){
 
             // 4. Fixed node settings for non-project nodes (year labels and central node)
             data.list.years.forEach( (year, i) => {
-                vis.data.nodes[i].fx = centreline.x
-                vis.data.nodes[i].fy = centreline.y
+                vis.data.nodes[i].fx = centerline.x
+                vis.data.nodes[i].fy = centerline.y
             })
             vis.data.nodes[data.list.years.length].fx = null
             vis.data.nodes[data.list.years.length].fy = null
 
             const noNonProjectNodes = data.list.years.length + 1 +  data.list.orgType.length
-            vis.data.nodes[noNonProjectNodes].fx = centreline.x
-            vis.data.nodes[noNonProjectNodes].fy = centreline.y
+            vis.data.nodes[noNonProjectNodes].fx = centerline.x
+            vis.data.nodes[noNonProjectNodes].fy = centerline.y
 
         },
 
@@ -944,26 +1140,26 @@ async function renderVis(data, settings){
             // 1. Set new simulation forces for circular layout
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
                 .force("charge", d3.forceManyBody().strength( d => d.__proto__.type  ? 0 : -100) )
-                .force("centre", null )
+                .force("center", null )
                 .force("collision", d3.forceCollide()
-                    .radius( d =>   d.__proto__.type === 'ls-node' ? settings.geometry.node.centre  :  d.__proto__.type ? 0
+                    .radius( d =>   d.__proto__.type === 'ls-node' ? settings.geometry.node.center  :  d.__proto__.type ? 0
                         : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + (settings.dims.width / 1080 * 5) )
                 )
                 .force("radial", d3.forceRadial()
                     .radius(d =>  d.__proto__.type ? 0 : settings.dims.width * 0.25 )
-                    .x(centreline.x)
-                    .y(centreline.y)
+                    .x(centerline.x)
+                    .y(centerline.y)
                     .strength(1)
                 )
                 .force("link", d3.forceLink(vis.data.links).id(d => d.id).strength(0) )
 
             // 2. Fixed node settings for non-project nodes (year labels and central node) 
             data.list.years.forEach( (year, i) => {
-                vis.data.nodes[i].fx = centreline.x
-                vis.data.nodes[i].fy = centreline.y
+                vis.data.nodes[i].fx = centerline.x
+                vis.data.nodes[i].fy = centerline.y
             })
-            vis.data.nodes[data.list.years.length].fx = centreline.x
-            vis.data.nodes[data.list.years.length].fy = centreline.y
+            vis.data.nodes[data.list.years.length].fx = centerline.x
+            vis.data.nodes[data.list.years.length].fy = centerline.y
         },
 
         timelineX: () => { 
@@ -981,16 +1177,16 @@ async function renderVis(data, settings){
             // 1. Set new simulation forces for x-axis timeline layout
             vis.state.simulation  = d3.forceSimulation(vis.data.nodes)
                 .force("charge", d3.forceManyBody().strength( d => d.__proto__.type ? 40 : 0) )
-                .force("centre", null )
-                .force("collision", d3.forceCollide().radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                .force("center", null )
+                .force("collision", d3.forceCollide().radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                     : d.__proto__.type === 'year-node' ? settings.dims.width / 1080 * 35
                         : d.__proto__.type ? 0
                             : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + settings.dims.width / 1080 * 5 )
                 )
-                .force("x", d3.forceX().x( d => d.__proto__.type ? centreline.x:  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
+                .force("x", d3.forceX().x( d => d.__proto__.type ? centerline.x:  d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeX(d.date)) ) )
                     .strength(d => d.type ? 1: 0.45)
                 )
-                .force("y", d3.forceY().y( d => d.__proto__.type ? oneQuarter.y  : centreline.y)
+                .force("y", d3.forceY().y( d => d.__proto__.type ? oneQuarter.y  : centerline.y)
                     .strength(d => d.type ? 1 : 0.15)
                 )
                 .force("radial", null)
@@ -999,7 +1195,7 @@ async function renderVis(data, settings){
             // 2. Fixed node settings for non-project nodes (year labels and central node) and label visibility
             data.list.years.forEach( (year, i) => {
                 vis.data.nodes[i].fx = vis.scales.timeX(new Date(year, 1, 1))
-                vis.data.nodes[i].fy = centreline.y
+                vis.data.nodes[i].fy = centerline.y
             })
             vis.data.nodes[data.list.years.length].fx = null
             vis.data.nodes[data.list.years.length].fy = null
@@ -1020,9 +1216,9 @@ async function renderVis(data, settings){
             // 1. Set new simulation forces for diagonal 'xy-axis' timeline layout
             vis.state.simulation  = d3.forceSimulation(vis.data.nodes)
                 .force("charge", d3.forceManyBody().strength( d => d.__proto__.type ? 10 : 0) )
-                .force("centre", null )
+                .force("center", null )
                 .force("collision", d3.forceCollide()
-                    .radius( d  => d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                    .radius( d  => d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                         : d.__proto__.type === 'year-node' ? settings.dims.width / 1080 * 35
                             : d.__proto__.type ? 0
                                 : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + (settings.dims.width / 1080 * 5)
@@ -1129,20 +1325,20 @@ async function renderVis(data, settings){
             // 2. Simulation settings for nodes on timeline spiral
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
                 .force("charge", null)      
-                .force("centre", null )          
+                .force("center", null )          
                 .force("collision", d3.forceCollide()
-                    .radius( d  => d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                    .radius( d  => d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                         : d.__proto__.type === 'year-node' ? settings.dims.width / 1080 * 35 
                             :  d.__proto__.type  ? 0
                                 : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + (settings.dims.width / 1080 * 5)
                     )  
                 )
                 .force("x", d3.forceX()
-                    .x( d => d.__proto__.type ?  centreline.x : spiralPath.getPointAtLength( d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => spiralTimescale(d.date))) ).x + centreline.x)
+                    .x( d => d.__proto__.type ?  centerline.x : spiralPath.getPointAtLength( d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => spiralTimescale(d.date))) ).x + centerline.x)
                     .strength(d => d.__proto__.type ? 5 : 0.5)
                 )
                 .force("y", d3.forceY()
-                    .y( (d, i) => d.__proto__.type ?  centreline.y : spiralPath.getPointAtLength( d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => spiralTimescale(d.date))) ).y + centreline.y)
+                    .y( (d, i) => d.__proto__.type ?  centerline.y : spiralPath.getPointAtLength( d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => spiralTimescale(d.date))) ).y + centerline.y)
                     .strength(d => d.__proto__.type ? 5 : 0.5)
                 )
                 .force("radial", null)
@@ -1151,8 +1347,8 @@ async function renderVis(data, settings){
 
             // 3. Fixed node settings for non-project nodes (year labels and central node)
             spiralYears.forEach( (date, i) => {
-                vis.data.nodes[i].fx = spiralPath.getPointAtLength(spiralTimescale(date)).x + centreline.x
-                vis.data.nodes[i].fy = spiralPath.getPointAtLength(spiralTimescale(date)).y + centreline.y
+                vis.data.nodes[i].fx = spiralPath.getPointAtLength(spiralTimescale(date)).x + centerline.x
+                vis.data.nodes[i].fy = spiralPath.getPointAtLength(spiralTimescale(date)).y + centerline.y
             })
             vis.data.nodes[data.list.years.length].fx = null
             vis.data.nodes[data.list.years.length].fy = null
@@ -1169,6 +1365,70 @@ async function renderVis(data, settings){
                         .style('stroke-width', null)  
         },
 
+        radialMoon: () => { 
+            // 0. Set link and label visibility, and node scales
+            vis.state.visibility.yearLabels = false
+            vis.state.visibility.clusterLabels = false
+            vis.state.visibility.centralClusterLabel = false
+            vis.state.visibility.links = false
+            vis.state.visibility.lsLabel = true
+            vis.state.visibility.clusterSelector = false
+            vis.state.layout.nodeScale = 1
+            vis.state.layout.lsNodeScale = 1
+            vis.methods.layout.nodeResize()
+
+            // 1. Set new simulation forces for x-axis timeline layout
+            vis.state.simulation  = d3.forceSimulation(vis.data.nodes)
+                // .force("charge", d3.forceManyBody().strength( d => d.__proto__.type ? 10 : 0) )
+                // .force("center", null )
+                .force("collision", d3.forceCollide().radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
+                    : d.__proto__.type === 'year-node' ? settings.dims.width / 1080 * 35
+                        : d.__proto__.type ? 0
+                            : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + settings.dims.width / 1080 * 5 )
+                )
+                .force("x", d3.forceX()
+                    .x( d => {
+                        const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
+                        return !projectData ? oneQuarter.x
+                            : projectData && projectData.description ? twoThird.x 
+                                : width
+                    })
+                    .strength(d => d.type ? 2 : 0.20)
+                )
+                .force("y", d3.forceY()
+                    .y( d => {
+                        const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
+                        return !projectData ? twoThird.y
+                            : projectData && projectData.description ? centerline.y  
+                                : centerline.y
+                    })
+                    .strength(d => {
+                        const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
+                        return !projectData ? 1 : projectData && projectData.description ? 0.1  : 0.3
+                    })
+                )
+                .force("radialStoryProjects", d3.forceRadial()
+                    .radius(d => { 
+                        const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
+                        return projectData && projectData.description ? settings.dims.width * 0.35  : settings.dims.width * 0.8
+                    })
+                    .x(oneThird.x)
+                    .y(centerline.y)
+                    .strength(d => {
+                        const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
+                        return !projectData ? 0 : projectData && projectData.description ? 2.5  : 4   
+                    })
+                )
+
+            // 2. Fixed node settings for non-project nodes (year labels and central node) and label visibility
+            data.list.years.forEach( (year, i) => {
+                vis.data.nodes[i].fx = null
+                vis.data.nodes[i].fy = null
+            })
+            vis.data.nodes[data.list.years.length].fx = null
+            vis.data.nodes[data.list.years.length].fy = null
+        },
+
         constellationRadial: () => {
             // 0.  Set link and label visibility, and node scales
             vis.state.visibility.yearLabels = true
@@ -1183,10 +1443,10 @@ async function renderVis(data, settings){
 
             // 1. Set new simulation forces for the radial constellation layout
             vis.state.simulation  =  d3.forceSimulation(vis.data.nodes)
-                .force("charge", d3.forceManyBody().strength( (d, i) => d.type  ? vis.scales.valueCharge(settings.geometry.node.centre) : -100) )
-                .force("centre", d3.forceCenter(centreline.x, centreline.y) )
+                .force("charge", d3.forceManyBody().strength( (d, i) => d.type  ? vis.scales.valueCharge(settings.geometry.node.center) : -100) )
+                .force("center", d3.forceCenter(centerline.x, centerline.y) )
                 .force("collision", d3.forceCollide()
-                    .radius( d  => d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                    .radius( d  => d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                         : d.__proto__.type === 'year-node' ? settings.dims.width / 1080 * 35
                             :  d.__proto__.type ? 0
                                 : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) + (settings.dims.width / 1080 * 5)
@@ -1195,9 +1455,9 @@ async function renderVis(data, settings){
                 .force("x", null)
                 .force("y", null)
                 .force("radial", d3.forceRadial()
-                    .radius((d, i) =>  d.type ? 0  : d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeRadial(d.date))) )
-                    .x(centreline.x)
-                    .y(centreline.y)
+                    .radius(d =>  d.type ? 0  : d3.mean(data.schema.projects[d.__proto__.id].workObjects.map(d => vis.scales.timeRadial(d.date))) )
+                    .x(centerline.x)
+                    .y(centerline.y)
                     .strength(d => d.type  !== 'year-node' ? 1 : 1000)
                 )
                 .force("link", d3.forceLink(vis.data.links)
@@ -1208,8 +1468,8 @@ async function renderVis(data, settings){
         
             // 2. Fixed node settings for non-project nodes (year labels and central node) and gridlines
             data.list.years.forEach( (year, i) => {
-                vis.data.nodes[i].fx = centreline.x
-                vis.data.nodes[i].fy = centreline.y + vis.scales.timeRadial(new Date(year, 6, 30))
+                vis.data.nodes[i].fx = centerline.x
+                vis.data.nodes[i].fy = centerline.y + vis.scales.timeRadial(new Date(year, 6, 30))
 
                 vis.els.chartArea.append('circle')
                     .classed('gridline radial-year', true)
@@ -1267,9 +1527,9 @@ async function renderVis(data, settings){
             // 2. Set new simulation forces for horizon constellation layout
             vis.state.simulation  = d3.forceSimulation(vis.data.nodes)
                 .force("charge", d3.forceManyBody().strength( (d, i) => d.__proto__.type ? 10 : 0) )
-                .force("centreline", null)
+                .force("centerline", null)
                 .force("collision", d3.forceCollide()
-                    .radius( (d, i) =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.centre 
+                    .radius( (d, i) =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                         : d.__proto__.type ?  0 
                             : vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) * 1.5 
                     )
@@ -1290,7 +1550,10 @@ async function renderVis(data, settings){
             })
             vis.data.nodes[data.list.years.length].fx = null
             vis.data.nodes[data.list.years.length].fy = null
-        }
+        },
+
+
+
     }
 
     /////////////////////////////////////
@@ -1333,8 +1596,8 @@ async function renderVis(data, settings){
 
             // III. Node shape
             vis.els.node.append("path")
-                .on('mouseover', nodeMouseover)
-                .on('mouseout', nodeMouseout)  
+                .on('mouseover', vis.methods.ui.nodeMouseover)
+                .on('mouseout', vis.methods.ui.nodeMouseout)  
                 .attr('class', d => {
                     const clientObj = data.schema.orgs[d.__proto__.client]
                     return d.__proto__.type ? 'dummy' : `project-node ${d.__proto__.id} ${helpers.slugify(clientObj.type)} ${helpers.slugify(clientObj.subtype)} ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}` 
@@ -1375,8 +1638,8 @@ async function renderVis(data, settings){
         vis.els.lsNode = d3.select('.ls-node-group')
         const lsNodeContainer = vis.els.lsNode.append('g')
             .classed('ls-node-icon-container', true)
-            .on('mouseover', lsNodeMouseover)
-            .on('mouseout', nodeMouseout)
+            .on('mouseover', vis.methods.ui.lsNodeMouseover)
+            .on('mouseout', vis.methods.ui.nodeMouseout)
 
         lsNodeContainer.append('path').classed('ls-node', true).attr('d', settings.geometry.icon.heart750)
         lsNodeContainer.append('text').classed('ls-node-label', true).attr('y', -20).text('Little')
@@ -1415,8 +1678,8 @@ async function renderVis(data, settings){
     /////////////////////////////////////////
 
     vis.methods.ui.updateSimLayout(vis.state.sim.name)
-    d3.select('.button-next').on('click', () => changeSim(true))
-    d3.select('.button-prev').on('click', () => changeSim(false))
+    d3.select('.button-next').on('click', () => vis.methods.ui.changeSim(true))
+    d3.select('.button-prev').on('click', () => vis.methods.ui.changeSim(false))
 
 
     ///////////////////////////////////////////////
@@ -1427,7 +1690,7 @@ async function renderVis(data, settings){
     function setupAnnotations(){
         // 1. Add annotation elements
         vis.els.annotation.classed('narrative annotation-group', true)
-            .attr('transform', `translate(${centreline.x}, ${centreline.y})`)
+            .attr('transform', `translate(${centerline.x}, ${centerline.y})`)
         vis.els.annotation.append('text').classed('annotation', true)
             .attr('x', 0).attr('y', 0).attr('dy', 0)
 
@@ -1436,7 +1699,7 @@ async function renderVis(data, settings){
             {   name:       'circle',                
                 title:      'Little constellations', 
                 annotation: 'Welcome to our project explorer. Navigate with the arrow buttons, play with whatever you can, and set controls for the heart of the sun.',
-                posX:       centreline.x,
+                posX:       centerline.x,
                 posY:       height + settings.dims.margin.top,
                 wrapWidth:  width * 0.65,
                 textAnchor: 'middle'
@@ -1444,7 +1707,7 @@ async function renderVis(data, settings){
             {   name:       'clusterHuddle',         
                 title:      'All my friends', // LCD Soundsystem
                 annotation: `These playful little shapes represent all of the projects done by Little Sketches (so far). All the orbs are paid projects sized by value, while pro bono jobs are hearts sized by a notional value. And the beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
-                posX:       centreline.x,
+                posX:       centerline.x,
                 posY:       threeQuarter.y,
                 wrapWidth:  width * 0.675,
                 textAnchor: 'middle'
@@ -1452,7 +1715,7 @@ async function renderVis(data, settings){
             {   name:       'clusterMultiFoci',      
                 title:      'Everything in its right place', // Radiohead
                 annotation: `These clusters show what the colour coding of each project means: they group projects by the type of clients or audience each piece is for. You can tap or hover over a project to learn a little bit about it, and to see how it might be connected to other projects.`,
-                posX:       centreline.x,
+                posX:       centerline.x,
                 posY:       twoThird.y,
                 wrapWidth:  width * 0.4,
                 textAnchor: 'middle'
@@ -1460,7 +1723,7 @@ async function renderVis(data, settings){
             {   name:       'timelineX',    
                 title:      'Wave of mutilation', // The Pixies
                 annotation: `Seeing when work was completed is a useful way to see how the shapes and sizes of our projects has evolved over time. It's also a a great way to illustrate a project's lineage.`,
-                posX:       centreline.x,
+                posX:       centerline.x,
                 posY:       threeQuarter.y,
                 wrapWidth:  width * 0.75,
                 textAnchor: 'middle'
@@ -1476,15 +1739,15 @@ async function renderVis(data, settings){
             {   name:       'timelineSpiral',      
                 title:      'Road to nowhere',  // Talikng Heads
                 annotation: `Putting all our work on a spiralling timeline is fascinating way to explore the patterns of project work...`   ,
-                posX:       centreline.x,
+                posX:       centerline.x,
                 posY:       settings.dims.margin.top * 0.5,
                 wrapWidth:  width * 0.75,
                 textAnchor: 'middle'
             },
             {   name:       'constellationRadial',   
                 title:      'Wandering star',       // Portishead
-                annotation: `Letting these projects wander within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
-                posX:       centreline.x,
+                annotation: `Letting these projects wander (a little) within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
+                posX:       centerline.x,
                 posY:       settings.dims.margin.top * 0.5,
                 wrapWidth:  width * 0.75,
                 textAnchor: 'middle'
@@ -1504,6 +1767,14 @@ async function renderVis(data, settings){
                 posY:       settings.dims.margin.top * 0.5,
                 wrapWidth:  width * 0.35,
                 textAnchor: 'start'
+            },
+            {   name:       'radialMoon',         
+                title:      'Marquee moon',         // Television
+                annotation: 'Coming soon... Storytime! read about and explore look a some of our more prominent and interesting projects by tapping on them here.',
+                posX:       oneQuarter.x,
+                posY:       oneQuarter.y,
+                wrapWidth:  width * 0.25,
+                textAnchor: 'middle'
             }
         ] 
 
@@ -1542,11 +1813,11 @@ async function renderVis(data, settings){
         settings.clusters = {
             orgType: {
                 0: { //'Community'
-                    x:  centreline.x,
+                    x:  centerline.x,
                     y:  oneQuarter.y / 2
                 },
                 1: { //'Education and research'
-                    x:  centreline.x,
+                    x:  centerline.x,
                     y:  threeQuarter.y + oneQuarter.y /2
                 },
                 2: { // 'Non-government organisation' 
@@ -1567,47 +1838,6 @@ async function renderVis(data, settings){
                 }
             }
         }
-    };
-
-    // EVENT HANDLERS
-    function nodeMouseover(event, d){
-        // 1. Tooltip for project nodes
-        if(typeof d.__proto__.id !== 'undefined') vis.methods.ui.showTooltip(this, d) 
- 
-        // 2. Highlight the connected network
-        const selectedNodeData = this.__data__.__proto__,
-            nodeID = selectedNodeData.id
-        
-        vis.methods.ui.highlightNetwork(nodeID)
-    }; // end nodeMouseover()
-
-    function nodeMouseout(){
-        d3.select("#tooltip").style('opacity' , 0).attr('class', 'tooltip')
-        d3.selectAll('.project-node').style('opacity', null)
-        d3.selectAll('.project-group').style('opacity', null)
-        d3.selectAll('.project-link').style('opacity', vis.state.visibility.links ? null : 0)
-    }; // // end nodeMouseout()
-
-    function lsNodeMouseover(){
-        d3.selectAll('.project-link').style('opacity', null)
-    }; // end lsNodeMouseover()
-
-
-    function changeSim(next = true){
-        const currentIndex = settings.scene.simOrder.map(d => d.name).indexOf(vis.state.sim.name)
-        let nextSimIndex, nextSim
-        switch(next){
-            case true:
-                    nextSimIndex = (currentIndex + 1) % settings.scene.simOrder.length
-                break
-            case false: 
-                    nextSimIndex = currentIndex === 0 ? settings.scene.simOrder.length - 1 : currentIndex - 1
-                break       
-            default:
-        }
-
-        vis.methods.ui.updateSimLayout(settings.scene.simOrder[nextSimIndex].name)
-        vis.methods.ui.updateAnnotation()
     };
 
     // Key press views
