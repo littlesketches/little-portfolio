@@ -217,8 +217,6 @@
                         d3.select('.title')
                             .html(data.title)
                             .transition().duration(500).style('opacity', null)
-
-
                     }, 500);
                 }, // end updateAnnotation
 
@@ -269,7 +267,6 @@
                         projectAdjStem = projectData.project_adjective ?  ['a', 'e', 'i', 'o', 'u'].indexOf(projectData.project_adjective.slice(0,1).toLowerCase()) > -1 ? `An ${projectData.project_adjective}` :  `A ${projectData.project_adjective}` : 'A',
                         projectTypeStem = projectData.project_type === 'residency' ? `${projectData.project_type} undertaken` : projectData.project_type === 'lab' ? `${projectData.project_type} project brought to life` : `${projectData.project_type} project delivered` 
                     
-
                     // A. Tooltip info 
                     let feeSizeDescription
                     for(let i = 0; i < vis.scales.bins.fees.length; i++){ 
@@ -382,10 +379,6 @@
                         partnerFees =  d3.sum(projectData.value_partners),
                         projectValue = fees + partnerFees
 
-                    console.log(projectData)
-                    console.log('Fee:', fees, partnerFees, 'Total fee:', projectValue)
-                    console.log( clientData)
-
                     // 1. Title and subtitle
                     d3.select('.project-title').html(projectData.name)
                     d3.select('.project-subtitle').html(projectData.activeName)
@@ -395,6 +388,7 @@
                                 ${projectData.description}
                         `)
                     }
+
                     // 2a. Clear the project container 
                      d3.selectAll('.project-info-container *').remove()   
 
@@ -418,11 +412,17 @@
                     // 2d. Project value
                     let displayValue = d3.format("$,.0f")(projectValue)
                     if(settings.layout.roundValue){
-                        if(projectValue <= 10000){  displayValue = `Under $10,000`}
-                        if(projectValue <= 25000){  displayValue = `$10,000 to $25,000`}
-                        if(projectValue < 50000){   displayValue = `$25,000 to $50,000`}
-                        if(projectValue <= 100000){ displayValue = `$50,000 to $100,000`}
-                        if(projectValue > 100000){ displayValue = `Over $100,000`}
+                        if(projectValue <= 10000){  
+                            displayValue = `Under $10,000`
+                        } else if(projectValue <= 25000){  
+                            displayValue = `$10,000 to $25,000`
+                        } else if(projectValue <= 50000){  
+                            displayValue = `$25,000 to $50,000`
+                        } else if(projectValue <= 100000){ 
+                            displayValue = `$50,000 to $100,000`
+                        } else {
+                            displayValue = `Over $100,000`
+                        }
                     }
 
                     if(projectData.project_type !== 'lab' && projectData.project_type !== 'pro bono'){
@@ -461,63 +461,75 @@
 
                     /// 3. Project images
                     d3.selectAll('li.project-img-container').remove()
-console.log(projectData.project_img_array)
                     projectData.project_img_array.forEach((imgName, i) =>{
-console.log('Adding: '+imgName)
                         imagesContainer.append('li').classed('project-img-container grid__item', true)
                             .append('img').attr('src', `./img/projects/png/${imgName}.png`)
                     })
                 }, // end updateProjectModal
 
                 projectNodeClick: function(event, d){
-                    const dimToSpan = d3.max([window.innerWidth,  window.innerHeight]),
+                    const duration = 2000,
+                        dimToSpan = d3.max([window.innerWidth,  window.innerHeight]),
                         nodeBBox = this.getBBox(),
                         nodeMinDim = d3.min([nodeBBox.width, nodeBBox.height]),
                         scaleRequired = dimToSpan / nodeMinDim,
                         nodeID = d.__proto__.id,
-                        projectData = data.schema.projects[nodeID]
+                        projectData = data.schema.projects[nodeID],
                         scaleMultiplier = 3.5 + (projectData.project_type === 'lab' ? 3 : 0) + (projectData.project_type === 'pro bono' ? 0.5 : 0)
 
-                    vis.methods.ui.updateProjectModal(nodeID)
-
+                    // Disable tooltip and project node interactions
+                    d3.select("#tooltip").style('opacity' , 0)
                     d3.selectAll(`.project-node`).style('pointer-events', 'none')
-                    d3.selectAll(`.project-node:not(.${nodeID}), .project-value-bg, .node-bg, .project-node-outline, .title-container`)
-                        .transition().duration(250)
+                        .on('mouseover', null)
+                        .on('mouseout', null)
+
+                    // Prepare modal info
+                    vis.methods.ui.updateProjectModal(nodeID)
+                    d3.selectAll(`.project-node:not(.${nodeID}), .project-value-bg, .node-bg, .project-node-outline, .project-link, .title-container`)
+                        .transition().duration(duration * 0.25)
                         .style('opacity', 0)
-                    d3.select(this).transition().duration(1500).delay(250)
+
+                    // Scale up selected node and 
+                    d3.select(this).transition().duration(duration * 0.75).delay(duration * 0.25)
                         .style('transform', `scale(${scaleRequired * scaleMultiplier})`)
                     d3.select('#project-details-container').classed('hidden', false)
                         .style('opacity', 0)
-                        .transition().duration(1500).delay(250)
+                        .transition().duration(duration * 0.75).delay(duration * 0.25)
                             .style('opacity', null)
+
+                    // Ensure close button event is attach
                     d3.select('.project-close-button').on('click', vis.methods.ui.projectNodeExit)
+
+                    // Hide (disable) the main title (buttons)
                     setTimeout(() => {
                         d3.select('.title-container').style('display', 'none')  
-                    }, 250);
+                    }, duration * 0.25);
                 }, // end projectNodeClick
 
-                projectNodeExit: function(event, d){
-                    d3.selectAll(`.project-node`).transition().duration(1500)
+                projectNodeExit: function(event, d){  
+                    const duration = 2000
+                    // Fade out modal and scale node back down
+                    d3.selectAll(`.project-node`).transition().duration(duration * 0.75)
                         .style('transform', null)
                     d3.select('#project-details-container')
-                        .transition().duration(250)
+                        .transition().duration(duration * 0.75)
                         .style('opacity', 0)
-                    setTimeout(() => {
-                        d3.select('#project-details-container').classed('hidden', true)
-                    }, 250);
 
                     setTimeout(() => {
-                        d3.selectAll(`.project-node, .project-value-bg, .node-bg, .project-node-outline`)
-                            .transition().duration(250)
-                            .style('opacity', null)
+                        d3.select('#project-details-container').classed('hidden', true)
+                        vis.methods.ui.nodeMouseout() // Reset all nodes
                         d3.select('.title-container').style('display', null)
-                            .transition().duration(250)
+                            .transition().duration(duration * 0.25)
                             .style('opacity', null)
+
                         setTimeout(() => {
-                            d3.selectAll(`.project-node`).style('pointer-events', null)
+                            // Reattach/set node and svg event listeners
+                            d3.selectAll(`.project-node`).style('pointer-events', 'auto')
+                                .on('mouseover', vis.methods.ui.nodeMouseover)
+                                .on('mouseout', vis.methods.ui.nodeMouseout)
                             vis.els.svg.on('click', null)
-                        }, 250);
-                    }, 1500);
+                        }, duration * 0.25);
+                    }, duration * 0.75);
                 }, // end projectNodeExit
 
             },
@@ -1906,4 +1918,4 @@ async function renderVis(data, settings){
     });
 
 
-};
+}; //end renderVis()
