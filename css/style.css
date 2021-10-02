@@ -246,8 +246,8 @@ body{
         left: 0;
         height: calc(100vh - 4vh);
         width: calc(100vw - 4vw);
-        /* background: #FFF7A8; */
         padding: 2vw;
+        overflow: hidden;
     }
     #project-details-container.hidden{
         display: none;
@@ -280,7 +280,6 @@ body{
     @media screen and (orientation:landscape) {
         #project-details-container{
             grid-template-columns: 2fr 1fr;
-
         }
         .project-title{
             font-size: 7.5vh;
@@ -293,11 +292,11 @@ body{
         }
         .project-content-container{
             font-size: 1.25vw;
-            width: 60vw;
+            width: 50vw;
         }
         .project-images-container{
             right: 0;
-            transform: perspective(3000px) translateY(0%) translateX(20%) rotateX(45deg) rotateZ(40deg) scale(0.65);
+            transform: perspective(3000px) translateY(0%) translateX(30%) rotateX(45deg) rotateZ(40deg) scale(0.65);
         }
     }
 
@@ -442,13 +441,13 @@ a.project-external-link{
             width: 30vh;
         }
         .tooltip-header{
-            font-size: 1.5vh; 
+            font-size: 1.75vh; 
         }
         .tooltip-client{
-            font-size: 1.25vh; 
+            font-size: 1.5vh; 
         }
         .tooltip-content{
-            font-size: 1vh; 
+            font-size: 1.25vh; 
         }
     }
 
@@ -458,17 +457,16 @@ a.project-external-link{
             width: 25vw;
         }
         .tooltip-header{
-            font-size: 1vw; 
+            font-size: 1.75vh; 
         }
         .tooltip-client{
-            font-size: 0.75vw; 
+            font-size: 1.5vh; 
         }
         .tooltip-content{
-            font-size: 0.75vw; 
+            font-size: 1.25vh; 
         }
 
     }
-
 
 
 

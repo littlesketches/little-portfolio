@@ -54,7 +54,6 @@
                 ctg_tech:           "> Tools and technologies",
                 ctg_skills:         "> Capabilities",
                 ctg_domains:        "> Domains",
-                // ctg_roles:          "> Roles",
             }
         },
         scene: {}
@@ -387,6 +386,8 @@
                                 <div class="project-details-label about">About</div>
                                 ${projectData.description}
                         `)
+                    } else {
+                        d3.select('.project-description-container').html('')
                     }
 
                     // 2a. Clear the project container 
@@ -476,6 +477,8 @@
                         nodeID = d.__proto__.id,
                         projectData = data.schema.projects[nodeID],
                         scaleMultiplier = 3.5 + (projectData.project_type === 'lab' ? 3 : 0) + (projectData.project_type === 'pro bono' ? 0.5 : 0)
+                    //Stop the sim
+                    vis.state.simulation.stop()
 
                     // Disable tooltip and project node interactions
                     d3.select("#tooltip").style('opacity' , 0)
@@ -490,8 +493,10 @@
                         .style('opacity', 0)
 
                     // Scale up selected node and 
-                    d3.select(this).transition().duration(duration * 0.75).delay(duration * 0.25)
+                    d3.select(this).style('filter', `grayscale(0)`)
+                        .transition().duration(duration * 0.75).delay(duration * 0.25)
                         .style('transform', `scale(${scaleRequired * scaleMultiplier})`)
+                        .style('filter', `grayscale(0.8)`)
                     d3.select('#project-details-container').classed('hidden', false)
                         .style('opacity', 0)
                         .transition().duration(duration * 0.75).delay(duration * 0.25)
@@ -510,7 +515,7 @@
                     const duration = 2000
                     // Fade out modal and scale node back down
                     d3.selectAll(`.project-node`).transition().duration(duration * 0.75)
-                        .style('transform', null)
+                        .style('transform', null).style('filter', `grayscale(0)`)
                     d3.select('#project-details-container')
                         .transition().duration(duration * 0.75)
                         .style('opacity', 0)
@@ -663,7 +668,7 @@ async function transformData(){
         for(key of Object.keys(projObj).filter(d => d.slice(0,9).toLocaleLowerCase() === 'partners_')){
             if(projObj[key] !== '')   partners.push(projObj[key])
         }
-console.log(projObj)
+
         // b. Create parents array
         const parentIds = []
         if(projObj.link_direct      !== ""){ parentIds.push(projObj.link_direct) }
@@ -1405,7 +1410,7 @@ async function renderVis(data, settings){
                             : projectData && projectData.description ? twoThird.x 
                                 : width
                     })
-                    .strength(d => d.type ? 2 : 0.20)
+                    .strength(d => d.type ? 0.5 : 0.20)
                 )
                 .force("y", d3.forceY()
                     .y( d => {
@@ -1416,21 +1421,22 @@ async function renderVis(data, settings){
                     })
                     .strength(d => {
                         const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return !projectData ? 1 : projectData && projectData.description ? 0.1  : 0.3
+                        return !projectData ? 0.25 : projectData && projectData.description ? 0.1  : 0.3
                     })
                 )
                 .force("radialStoryProjects", d3.forceRadial()
                     .radius(d => { 
                         const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return projectData && projectData.description ? settings.dims.width * 0.35  : settings.dims.width * 0.8
+                        return projectData && projectData.description ? settings.dims.width * 0.45  : settings.dims.width * 0.8
                     })
                     .x(oneThird.x)
                     .y(centerline.y)
                     .strength(d => {
                         const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return !projectData ? 0 : projectData && projectData.description ? 2.5  : 4   
+                        return !projectData ? 0 : projectData && projectData.description ? 1  : 2   
                     })
                 )
+                .velocityDecay(0.7)
 
             // 2. Fixed node settings for non-project nodes (year labels and central node) and label visibility
             data.list.years.forEach( (year, i) => {
@@ -1782,7 +1788,7 @@ async function renderVis(data, settings){
             },
             {   name:       'radialMoon',         
                 title:      'Marquee moon',         // Television
-                annotation: 'Coming soon... Storytime! read about and explore look a some of our more prominent and interesting projects by tapping on them here.',
+                annotation: 'Story time! Tap on any project to read and see more about it..',
                 posX:       oneQuarter.x,
                 posY:       oneQuarter.y,
                 wrapWidth:  width * 0.25,
