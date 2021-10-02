@@ -234,7 +234,11 @@ body{
     filter: url(#softGlow);
 }
 .project-node.mute{
-    filter: grayscale(0.75)
+    filter: grayscale(75%);
+   -webkit-filter: grayscale(75%); 
+   -moz-filter: grayscale(75%);
+   -ms-filter: grayscale(75%);
+   -o-filter: grayscale(75%);
 }
 /******************************************/
 /*  PROJECT DETAILS MODEL STYLING OVERLAY */
