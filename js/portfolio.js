@@ -1410,7 +1410,7 @@ async function renderVis(data, settings){
                             : projectData && projectData.description ? twoThird.x 
                                 : width
                     })
-                    .strength(d => d.type ? 0.5 : 0.20)
+                    .strength(d => d.type ? 0.65 : 0.20)
                 )
                 .force("y", d3.forceY()
                     .y( d => {
@@ -1568,10 +1568,7 @@ async function renderVis(data, settings){
             })
             vis.data.nodes[data.list.years.length].fx = null
             vis.data.nodes[data.list.years.length].fy = null
-        },
-
-
-
+        }
     }
 
     /////////////////////////////////////
