@@ -365,7 +365,7 @@
                     d3.selectAll('.project-node').style('opacity', null).classed('mute', false).classed('highlight', false)
                     d3.selectAll('.project-group').style('opacity', null)
                     d3.selectAll('.project-link').style('opacity', vis.state.visibility.links ? null : 0)
-                }, // // end nodeMouseout()
+                }, //  end nodeMouseout()
 
                 updateProjectModal: (nodeID) => {
                     const infoContainer = d3.select('.project-info-container'),
@@ -383,7 +383,7 @@
                     d3.select('.project-subtitle').html(projectData.activeName)
                     if(projectData.description){
                         d3.select('.project-description-container').html(`
-                                <div class="project-details-label about">About</div>
+                                <div class="project-details-label about">About the project</div>
                                 ${projectData.description}
                         `)
                     } else {
@@ -401,36 +401,38 @@
                     if(clientData.current_URL !== "") clientName = `<a href = ${clientData.current_URL} target="_blank"> ${clientName}</a>`
 
                     if(projectData.project_type !== 'lab'){
-                        infoContainer.append('div').html(`<span class = "project-details-label">Client:</span> ${clientName}`)
-                        infoContainer.append('div').html(`<span class = "project-details-label">Location:</span> ${clientData.location_city}, ${clientData.location_country}</a>`)
+                        const clientRow = infoContainer.append('div').classed('project-details-row-container', true),
+                            clientLocationRow = infoContainer.append('div').classed('project-details-row-container', true)
+                        clientRow.append('div').classed('project-details-label', true).html('Client')
+                        clientRow.append('div').classed('project-details-content', true).html(`${clientName}`)
+
+                        clientLocationRow.append('div').classed('project-details-label', true).html('Location')
+                        clientLocationRow.append('div').classed('project-details-content', true).html(`${clientData.location_city}, ${clientData.location_country}`)
                     }
 
                     // 2c. Project website link
-                    if(projectData.project_url !== ''){
-                        infoContainer.append('div').html(`<span class = "project-details-label">Project website:</span> <a href = ${projectData.project_url} target="_blank">${projectData.project_url}</a> `)
+                    if(projectData.project_url){
+                        const websiteRow = infoContainer.append('div').classed('project-details-row-container', true)
+                        websiteRow.append('div').classed('project-details-label', true).html(`Project website:`)
+                        websiteRow.append('div').classed('project-details-content', true).html(`<a href = ${projectData.project_url} target="_blank">${projectData.project_url}</a>`)
                     }
 
-                    // 2d. Project value
+                    // 2d. Project value and project delivery (type and date) string
                     let displayValue = d3.format("$,.0f")(projectValue)
                     if(settings.layout.roundValue){
                         if(projectValue <= 10000){  
                             displayValue = `Under $10,000`
-                        } else if(projectValue <= 25000){  
-                            displayValue = `$10,000 to $25,000`
-                        } else if(projectValue <= 50000){  
-                            displayValue = `$25,000 to $50,000`
+                        } else if(projectValue <= 30000){  
+                            displayValue = `$10,000 to $30,000`
+                        } else if(projectValue <= 60000){  
+                            displayValue = `$30,000 to $60,000`
                         } else if(projectValue <= 100000){ 
-                            displayValue = `$50,000 to $100,000`
+                            displayValue = `$60,000 to $100,000`
                         } else {
                             displayValue = `Over $100,000`
                         }
                     }
 
-                    if(projectData.project_type !== 'lab' && projectData.project_type !== 'pro bono'){
-                        infoContainer.append('div').html(`<span class = "project-details-label">Project size:</span> ${displayValue}`)
-                    }
-
-                    // 2e. Project delivery (type and date) string
                     const  projectTypeStem = projectData.project_type === 'A residency' ? `${projectData.project_type} undertaken` : projectData.project_type === 'lab' ? `A ${projectData.project_type} project brought to life` : `A ${projectData.project_type} project delivered` 
 
                     let dateString = `${projectTypeStem} `
@@ -458,7 +460,16 @@
                         deliveryOrgString = '.'
                     }
 
-                    infoContainer.append('div').html(`<span class = "project-details-label">Delivery:</span> ${dateString}${deliveryOrgString} `)
+                    if(projectData.project_type !== 'lab' && projectData.project_type !== 'pro bono'){
+                        const valueRow = infoContainer.append('div').classed('project-details-row-container', true)
+                        valueRow.append('div').classed('project-details-label', true).html('Project size:')
+                        valueRow.append('div').classed('project-details-content', true).html(`${displayValue}`)
+
+                        const deliveryRow = infoContainer.append('div').classed('project-details-row-container', true)
+                        deliveryRow.append('div').classed('project-details-label', true).html('Delivery:')
+                        deliveryRow.append('div').classed('project-details-content', true).html(`${dateString}`)
+
+                    }
 
                     /// 3. Project images
                     d3.selectAll('li.project-img-container').remove()
@@ -476,7 +487,7 @@
                         scaleRequired = dimToSpan / nodeMinDim,
                         nodeID = d.__proto__.id,
                         projectData = data.schema.projects[nodeID],
-                        scaleMultiplier = 3.5 + (projectData.project_type === 'lab' ? 3 : 0) + (projectData.project_type === 'pro bono' ? 0.5 : 0)
+                        scaleMultiplier = scaleRequired * 0.8
                     //Stop the sim
                     vis.state.simulation.stop()
 
@@ -513,6 +524,7 @@
 
                 projectNodeExit: function(event, d){  
                     const duration = 2000
+                    vis.state.simulation.restart()
                     // Fade out modal and scale node back down
                     d3.selectAll(`.project-node`).transition().duration(duration * 0.75)
                         .style('transform', null).style('filter', `grayscale(0)`)
@@ -899,6 +911,8 @@ async function renderVis(data, settings){
                             .range([settings.geometry.node.min, settings.geometry.node.max]),
         valueY:         d3.scaleLinear().domain(d3.extent(data.list.projectValues_LS))
                             .range([threeQuarter.y,  oneQuarter.y]),
+        valueStrength:   d3.scaleLinear().domain(d3.extent(data.list.projectValues_LS))
+                            .range([0.075,  0.15]),
 
         rtgAveY:        d3.scaleLinear().domain(d3.extent(data.list.project_ave_rating))
                             .range([settings.dims.height - settings.dims.margin.bottom * 1.5, settings.dims.margin.top ]),
@@ -1396,8 +1410,6 @@ async function renderVis(data, settings){
 
             // 1. Set new simulation forces for x-axis timeline layout
             vis.state.simulation  = d3.forceSimulation(vis.data.nodes)
-                // .force("charge", d3.forceManyBody().strength( d => d.__proto__.type ? 10 : 0) )
-                // .force("center", null )
                 .force("collision", d3.forceCollide().radius( d =>  d.__proto__.type === 'ls-node' ? settings.geometry.node.center 
                     : d.__proto__.type === 'year-node' ? settings.dims.width / 1080 * 35
                         : d.__proto__.type ? 0
@@ -1406,34 +1418,27 @@ async function renderVis(data, settings){
                 .force("x", d3.forceX()
                     .x( d => {
                         const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return !projectData ? oneQuarter.x
-                            : projectData && projectData.description ? twoThird.x 
-                                : width
+                        return !projectData ? oneQuarter.x : twoThird.x 
                     })
-                    .strength(d => d.type ? 0.65 : 0.20)
+                    .strength(d => d.type ? 3 : 0.30)
                 )
                 .force("y", d3.forceY()
                     .y( d => {
                         const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return !projectData ? twoThird.y
-                            : projectData && projectData.description ? centerline.y  
-                                : centerline.y
+                        return !projectData ? centerline.y : centerline.y  
                     })
                     .strength(d => {
                         const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return !projectData ? 0.25 : projectData && projectData.description ? 0.1  : 0.3
+                        return !projectData ? 2.5 : vis.scales.valueStrength(projectData.value_LS) 
                     })
                 )
                 .force("radialStoryProjects", d3.forceRadial()
-                    .radius(d => { 
-                        const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return projectData && projectData.description ? settings.dims.width * 0.45  : settings.dims.width * 0.8
-                    })
+                    .radius(d => settings.dims.width * 0.45 )
                     .x(oneThird.x)
                     .y(centerline.y)
                     .strength(d => {
                         const projectData = d.__proto__.type ? null : data.schema.projects[d.__proto__.id]
-                        return !projectData ? 0 : projectData && projectData.description ? 1  : 2   
+                        return !projectData ? 0 : 1.5 
                     })
                 )
                 .velocityDecay(0.7)
@@ -1591,62 +1596,62 @@ async function renderVis(data, settings){
             .attr('class', (d,i) => d.type ? `${d.type}-group` : `project-group ${d.__proto__.id}`)
 
         // i. Project and year nodes with shape options
-            // I. Partners transparent 'shadow bg' (fee based projects only)
+        // I. Partners transparent 'shadow bg' (fee based projects only)
+        vis.els.node.append('path')
+            .attr('class', d => typeof d.__proto__.type !== 'undefined' || data.schema.projects[d.__proto__.id].project_type  === 'pro bono' || data.schema.projects[d.__proto__.id].project_type  === "lab" ? 'dummy' : 'project-value-bg')
+            .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS + d3.sum(data.schema.projects[d.__proto__.id].value_partners)) ) )
+
+        // II. Node background (used to cover links where mix-blend mode is applied)
+        if(settings.layout.nodeExtras){
             vis.els.node.append('path')
-                .attr('class', d => typeof d.__proto__.type !== 'undefined' || data.schema.projects[d.__proto__.id].project_type  === 'pro bono' || data.schema.projects[d.__proto__.id].project_type  === "lab" ? 'dummy' : 'project-value-bg')
-                .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS + d3.sum(data.schema.projects[d.__proto__.id].value_partners)) ) )
+                .attr('class', d => typeof d.__proto__.type !== 'undefined'  ? 'dummy' : `node-bg ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
+                .attr("d", d =>  typeof d.__proto__.type !== 'undefined'  ? null 
+                        : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
+                        : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
+                        : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
+                )
+                .attr('transform', d =>  typeof d.__proto__.type === 'undefined' &&  (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab") 
+                    ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null)
+        }
 
-            // II. Node background (used to cover links where mix-blend mode is applied)
-            if(settings.layout.nodeExtras){
-                vis.els.node.append('path')
-                    .attr('class', d => typeof d.__proto__.type !== 'undefined'  ? 'dummy' : `node-bg ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
-                    .attr("d", d =>  typeof d.__proto__.type !== 'undefined'  ? null 
-                            : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
-                            : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
-                            : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
-                    )
-                    .attr('transform', d =>  typeof d.__proto__.type === 'undefined' &&  (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab") 
-                        ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null)
-            }
+        // III. Node shape
+        vis.els.node.append("path")
+            .on('mouseover', vis.methods.ui.nodeMouseover)
+            .on('mouseout', vis.methods.ui.nodeMouseout)  
+            .attr('class', d => {
+                const clientObj = data.schema.orgs[d.__proto__.client]
+                return d.__proto__.type ? 'dummy' : `project-node ${d.__proto__.id} ${helpers.slugify(clientObj.type)} ${helpers.slugify(clientObj.subtype)} ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}` 
+            })
+            .attr("stroke-width", d => settings.layout.nodeExtras ? null : d.type ?  0   
+                : typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
+                ? 1 / vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)
+                    : vis.scales.valueThickness(data.schema.projects[d.__proto__.id].value_LS) )
+            .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null 
+                : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
+                    : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
+                        : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
+            )
+            .attr('transform', d =>  typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
+                ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)})`  : null)
 
-            // III. Node shape
+        //  IV. Node outline (used for effects)
+        if(settings.layout.nodeExtras){
             vis.els.node.append("path")
-                .on('mouseover', vis.methods.ui.nodeMouseover)
-                .on('mouseout', vis.methods.ui.nodeMouseout)  
-                .attr('class', d => {
-                    const clientObj = data.schema.orgs[d.__proto__.client]
-                    return d.__proto__.type ? 'dummy' : `project-node ${d.__proto__.id} ${helpers.slugify(clientObj.type)} ${helpers.slugify(clientObj.subtype)} ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}` 
-                })
-                .attr("stroke-width", d => settings.layout.nodeExtras ? null : d.type ?  0   
+                .attr('class', d =>  d.__proto__.type ? 'dummy' : `project-node-outline ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
+                .attr("stroke-width", d => d.type ?  0   
                     : typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
                     ? 1 / vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)
                         : vis.scales.valueThickness(data.schema.projects[d.__proto__.id].value_LS) )
-                .attr("d", d => typeof d.__proto__.type !== 'undefined' ? null 
-                    : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
+                .attr("d", d =>  d.__proto__.type ? null     
+                        : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
                         : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
-                            : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
+                        : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
                 )
                 .attr('transform', d =>  typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
-                    ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)})`  : null)
-
-            //  IV. Node outline (used for effects)
-            if(settings.layout.nodeExtras){
-                vis.els.node.append("path")
-                    .attr('class', d =>  d.__proto__.type ? 'dummy' : `project-node-outline ${helpers.slugify(data.schema.projects[d.__proto__.id].project_type)}`)
-                    .attr("stroke-width", d => d.type ?  0   
-                        : typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
-                        ? 1 / vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS)
-                            : vis.scales.valueThickness(data.schema.projects[d.__proto__.id].value_LS) )
-                    .attr("d", d =>  d.__proto__.type ? null     
-                            : data.schema.projects[d.__proto__.id].project_type === "pro bono" ? settings.geometry.icon.heart
-                            : data.schema.projects[d.__proto__.id].project_type === "lab" ? settings.geometry.icon.beaker
-                            : helpers.circlePath(vis.scales.valueRadius( data.schema.projects[d.__proto__.id].value_LS) ) 
-                    )
-                    .attr('transform', d =>  typeof d.__proto__.type === 'undefined' && (d.__proto__.project_type === "pro bono" ||  d.__proto__.project_type === "lab")  
-                        ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null  )
-            }
-            // V. Remove unused
-            d3.selectAll('.dummy').remove()
+                    ? `scale(${vis.scales.valueRadius(data.schema.projects[d.__proto__.id].value_LS) } )` : null  )
+        }
+        // V. Remove unused
+        d3.selectAll('.dummy').remove()
     
 
         // ii. Add centered LS node with label
@@ -1721,18 +1726,18 @@ async function renderVis(data, settings){
             },
             {   name:       'clusterHuddle',         
                 title:      'All my friends', // LCD Soundsystem
-                annotation: `These playful little shapes represent all of the projects done by Little Sketches (so far). All the orbs are paid projects sized by value, while pro bono jobs are hearts sized by a notional value. And the beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
+                annotation: `These playful little shapes represent projects done by Little Sketches (so far). All the orbs are paid projects sized by their value, while pro bono jobs are hearts sized by a notional value. The glow surrounding some projects means that we worked with partners. And finally, the beakers represent some of the ‘more finished' experimental speculative design projects we’ve been doing.`,
                 posX:       centerline.x,
                 posY:       threeQuarter.y,
-                wrapWidth:  width * 0.675,
+                wrapWidth:  width * 0.65,
                 textAnchor: 'middle'
             },
             {   name:       'clusterMultiFoci',      
                 title:      'Everything in its right place', // Radiohead
-                annotation: `These clusters show what the colour coding of each project means: they group projects by the type of clients or audience each piece is for. You can tap or hover over a project to learn a little bit about it, and to see how it might be connected to other projects.`,
+                annotation: `These clusters show what the colour coding of each project means: they group projects by the type of clients or audience each piece is for. You can tap or hover over a project to learn a little bit about it, and to see who we've worked with, and how that project might be connected to others.`,
                 posX:       centerline.x,
                 posY:       twoThird.y,
-                wrapWidth:  width * 0.4,
+                wrapWidth:  width * 0.5,
                 textAnchor: 'middle'
             },
             {   name:       'timelineX',    
@@ -1740,7 +1745,7 @@ async function renderVis(data, settings){
                 annotation: `Seeing when work was completed is a useful way to see how the shapes and sizes of our projects has evolved over time. It's also a a great way to illustrate a project's lineage.`,
                 posX:       centerline.x,
                 posY:       threeQuarter.y,
-                wrapWidth:  width * 0.75,
+                wrapWidth:  width * 0.8,
                 textAnchor: 'middle'
             },
             {   name:       'timelineXY',            
@@ -1752,26 +1757,26 @@ async function renderVis(data, settings){
                 textAnchor: 'middle'
             },
             {   name:       'timelineSpiral',      
-                title:      'Road to nowhere',  // Talikng Heads
+                title:      'Road to nowhere',  // Talking Heads
                 annotation: `Putting all our work on a spiralling timeline is fascinating way to explore the patterns of project work...`   ,
                 posX:       centerline.x,
                 posY:       settings.dims.margin.top * 0.5,
-                wrapWidth:  width * 0.75,
+                wrapWidth:  width * 0.8,
                 textAnchor: 'middle'
             },
             {   name:       'constellationRadial',   
                 title:      'Wandering star',       // Portishead
-                annotation: `Letting these projects wander (a little) within these concentric timelines produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
+                annotation: `Letting these projects wander within a concentric timeline produces some mesmerising ways of looking different constellations or projects. Untangling constellations by dragging projects around can also be strangely relaxing waste of time.`,
                 posX:       centerline.x,
                 posY:       settings.dims.margin.top * 0.5,
-                wrapWidth:  width * 0.75,
+                wrapWidth:  width * 0.8,
                 textAnchor: 'middle'
             },
             {   name:       'constellationHorizon',  
                 title:      'The sky lit up',       // PJ Harvey
-                annotation: `Visualising stuff like project timing, value and type is kinda interesting, and also kinda boring at the same time. Here view we've added some other project criteria to see what work ascends to the heavens..`,
+                annotation: `Visualising stuff like project value, client type an delivery times is kinda of interesting, but it's also a bit serious and boring at the same time. Here view we've assessed projects by some other criteria to see what work ascends to the heavens..`,
                 posX:       settings.dims.margin.left,
-                posY:       settings.dims.margin.top * 0.5,
+                posY:       settings.dims.margin.top,
                 wrapWidth:  width * 0.5,
                 textAnchor: 'start'
             },
@@ -1785,10 +1790,10 @@ async function renderVis(data, settings){
             },
             {   name:       'radialMoon',         
                 title:      'Marquee moon',         // Television
-                annotation: 'Story time! Tap on any project to read and see more about it..',
+                annotation: 'Story time! In this view you can tap on any project to read and see more about it..',
                 posX:       oneQuarter.x,
                 posY:       oneQuarter.y,
-                wrapWidth:  width * 0.25,
+                wrapWidth:  width * 0.30,
                 textAnchor: 'middle'
             }
         ] 
@@ -1799,15 +1804,15 @@ async function renderVis(data, settings){
 
     function addClusterMenu(){
         const menuGroup = vis.els.svg.append('g').classed('cluster-menu menu-group annotation-group', true)
-                .attr('transform', `translate(${settings.dims.margin.left}, ${settings.dims.margin.top * 0.5})`)
+                .attr('transform', `translate(${settings.dims.margin.left}, ${settings.dims.margin.top * 0.25})`)
         menuGroup.append('text')
             .classed('menu-header', true)
             .text('Explore by theme:')
 
-        const lineSpacing = 24
+        const lineSpacing = 26
         Object.entries(settings.labels.map).forEach( ([key, label] , i) => {
             menuGroup.append('text').classed(`menu-item ${key}`, true)
-                .attr('y', 26 + i * lineSpacing)
+                .attr('y', 30 + i * lineSpacing)
                 .text(label)      
                 .on('click', function(){
                     d3.selectAll(`.menu-item`).classed('selected', false)
@@ -1862,61 +1867,6 @@ async function renderVis(data, settings){
             case 32:  // Space
                 d3.selectAll('.project-link').transition().duration(800).style('opacity', null)
                 break
-            case 48:  // 0
-                vis.methods.ui.updateSimLayout('circle')
-                break
-            case 49: // 1
-                vis.methods.ui.updateSimLayout('clusterHuddle')
-                break   
-            case 50: // 2
-                vis.methods.ui.updateSimLayout('timelineX')
-                break    
-            case 51: // 3
-                vis.methods.ui.updateSimLayout('timelineXY')
-                break   
-            case 52: // 4
-                vis.methods.ui.updateSimLayout('timelineSpiral')
-                break    
-            case 53: // 5
-                vis.methods.ui.updateSimLayout('constellationRadial')
-                break   
-            case 54: // 6
-                vis.methods.ui.updateSimLayout('clusterMultiFoci')
-                break   
-            case 55: // 7
-                // vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][0]
-                const index = data.list.project[vis.state.layout.clusterGroup].indexOf(vis.state.layout.clusterFocus)
-                vis.methods.ui.updateSimLayout('clusterFocus')
-                vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][(index +1) % data.list.project[vis.state.layout.clusterGroup].length]
-                break    
-            case 114: // r
-                const clusterGroups = ['tech', 'skills', 'roles', 'themes', 'thinking', 'domains'],
-                    clusterIDX = clusterGroups.indexOf(vis.state.layout.clusterGroup)
-                vis.state.layout.clusterGroup = clusterGroups[(clusterIDX + 1) % clusterGroups.length]
-                vis.state.layout.clusterFocus = data.list.project[vis.state.layout.clusterGroup][0]
-                console.log('Cluster group is: '+vis.state.layout.clusterGroup)
-                break    
-            case 56: // 8
-                vis.state.layout.ratingName = 'average'
-                vis.methods.ui.updateSimLayout('constellationHorizon')
-                break  
-
-            case 101: // e
-                console.log('*** FUN ***')
-                vis.state.layout.ratingName = 'fun'
-                vis.methods.ui.updateSimLayout('constellationHorizon')
-                break    
-            case 119: // w
-                console.log('*** FORTUNE ***')
-                vis.state.layout.ratingName = 'fortune'
-                vis.methods.ui.updateSimLayout('constellationHorizon')
-                break    
-            case 113: // q
-                console.log('*** FAME ***')
-                vis.state.layout.ratingName = 'fame'
-                vis.methods.ui.updateSimLayout('constellationHorizon')
-                break    
-
         }
     });
 
