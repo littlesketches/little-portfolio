@@ -81,7 +81,8 @@
 
     const vis =  {
         state: {
-            mode:               'dark',
+            mode:                       'dark',
+            isTouchScreen:              () => (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0)),
             visibility: {
                 links:                  '',
                 yearLabels:             '',
@@ -336,7 +337,7 @@
                     d3.selectAll('.project-link').style('opacity', null)
                 }, // end lsNodeMouseover()
 
-                lsNodeClick: () =>{
+                lsNodeClick: () => {
                     // Update cluster focus
                     if(vis.state.sim.name === 'clusterFocus'){
                         let index = data.list.project[vis.state.layout.clusterGroup].indexOf(vis.state.layout.clusterFocus)
@@ -468,13 +469,13 @@
                         const deliveryRow = infoContainer.append('div').classed('project-details-row-container', true)
                         deliveryRow.append('div').classed('project-details-label', true).html('Delivery:')
                         deliveryRow.append('div').classed('project-details-content', true).html(`${dateString}`)
-
                     }
 
                     /// 3. Project images
                     d3.selectAll('li.project-img-container').remove()
                     projectData.project_img_array.forEach((imgName, i) =>{
                         imagesContainer.append('li').classed('project-img-container grid__item', true)
+                            .style('transform',  projectData.project_img_array.length === 1 ? `translateY(-15%)` : null)
                             .append('img').attr('src', `./img/projects/png/${imgName}.png`)
                     })
                 }, // end updateProjectModal
@@ -646,6 +647,8 @@ function buildVis(){
         await transformData(data.table)       
         await renderVis(data, settings)                                    
     })
+
+    // Detect touch device
 
     // X. Table data parsing function: trim() header white space and prase numbers with "$" and "," stripped. 
     const parseTable = (tableName, tableData) => {
@@ -879,7 +882,7 @@ async function renderVis(data, settings){
         threeQuarter    = {x: width * 0.75 + settings.dims.margin.left, y: height * 0.75 + settings.dims.margin.top }
 
     settings.geometry.node = {
-        min:             settings.dims.width / 1080 , 
+        min:             settings.dims.width / 1080 * 5, 
         max:             settings.dims.width / 1080 * 50, 
         center:          settings.dims.width / 1080 * 100,
         cluster:         settings.dims.width / 1080 * 60,
