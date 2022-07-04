@@ -645,7 +645,7 @@ function buildVis(){
         return data
     }).then( async (data) => {
         await transformData(data.table)       
-        await renderVis(data, settings)                                    
+        await renderVis(data, settings)                                 
     })
 
     // Detect touch device
