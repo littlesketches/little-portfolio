@@ -691,6 +691,7 @@ async function transformData(){
         if(projObj.link_network    !== ""){ parentIds.push(projObj.link_network) }
 
         // c. Reshape projects data
+
         data.schema.projects[projObj.id] = {
             activeName:         projObj.active_name !== '' ? projObj.active_name : null,
             name:               projObj.name,
