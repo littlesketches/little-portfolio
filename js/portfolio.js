@@ -1866,7 +1866,6 @@ async function renderVis(data, settings){
 
     // Key press views
     document.addEventListener("keypress",  async (event) =>{ 
-        console.log(event.keyCode)
         switch(event.keyCode){
             case 32:  // Space
                 d3.selectAll('.project-link').transition().duration(800).style('opacity', null)
