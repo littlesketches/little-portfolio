@@ -630,6 +630,7 @@
 ///////////////////////////////////////////////////////
 
 buildVis()
+
 function buildVis(){
     // Load datasets, parse, transform and render
     const dataURLs = {
@@ -727,7 +728,11 @@ async function transformData(){
 
     // d. Re-loop to find and add all children
     for(projArray of Object.entries(data.schema.projects)){
-        if(projArray[1].network_parents.length > 0)  projArray[1].network_parents.forEach(id =>  data.schema.projects[id].network_children.push(projArray[0]) )
+        if(projArray[1].network_parents.length > 0) {
+            projArray[1].network_parents.forEach(id => {
+                data.schema.projects[id].network_children.push(projArray[0]) 
+        })
+        }
     }
 
     // 2. Stakeholder org data
